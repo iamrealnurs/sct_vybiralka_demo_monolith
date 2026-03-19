@@ -27,3 +27,4 @@ coverage.xml
 db.sqlite3
 .ruff_cache
 .pytest_cache
+web/datagen_data/
