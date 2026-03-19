@@ -1,0 +1,49 @@
+services:
+  web:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: web
+    image: bandirom/django-template:${DOCKER_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/prod/web/Dockerfile
+    volumes:
+      - media_files:/app/media/
+    ports:
+      - "8000:8000"
+    environment:
+      USE_HTTPS: 0
+    env_file:
+      - docker/prod/env/.env
+      - docker/prod/env/.db.env
+      - docker/prod/env/.gunicorn.env
+      - docker/prod/env/.data.env
+      - path: .secrets.env
+        required: false
+  celery:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: celery
+    image: bandirom/django-template:${DOCKER_TAG:-latest}
+  db:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: db
+    command: ["-c", "config_file=/etc/postgresql/postgresql.conf"]
+    volumes:
+      - ./docker/prod/db/pg.conf:/etc/postgresql/postgresql.conf
+    env_file:
+      - docker/prod/env/.db.env
+  redis:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: redis
+
+volumes:
+  media_files:
+  postgres_data:
+  postgres_socket:
+
+networks:
+  separated_network:
+    driver: bridge

@@ -1,0 +1,51 @@
+services:
+  web:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: web
+    build:
+      context: .
+      dockerfile: docker/dev/web/Dockerfile
+    volumes:
+      - ./web/:/app/:cached
+    ports:
+      - "8000:8000"
+    env_file:
+      - docker/dev/env/.env
+      - docker/dev/env/.db.env
+      - docker/dev/env/.email.env
+      - docker/prod/env/.data.env
+  db:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: db
+    env_file:
+      - docker/dev/env/.db.env
+  redis:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: redis
+
+  celery:
+    extends:
+      file: docker/modules/docker-compose.common.yml
+      service: celery
+    build:
+      context: .
+      dockerfile: docker/dev/web/Dockerfile
+    volumes:
+      - ./web/:/app/:cached
+    env_file:
+      - docker/dev/env/.env
+      - docker/dev/env/.db.env
+      - docker/dev/env/.email.env
+      - docker/prod/env/.data.env
+
+volumes:
+  postgres_data:
+  postgres_socket:
+  redis_data:
+
+networks:
+  separated_network:
+    driver: bridge
