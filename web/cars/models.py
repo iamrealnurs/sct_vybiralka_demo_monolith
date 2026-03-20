@@ -9,6 +9,8 @@ from django.utils.translation import gettext_lazy as _
 # Ленивый перевод строк для verbose_name и других подписей.
 
 
+from main.models import TimestampedModel
+
 # ============================================================
 # choices
 # ============================================================
@@ -322,33 +324,6 @@ class SuspensionType(models.TextChoices):
     SEMI_INDEPENDENT_TORSION = "SEMI_INDEPENDENT_TORSION", _("Полунезависимая, торсионная")
     UNKNOWN = "UNKNOWN", _("Неизвестно")
 
-
-# ============================================================
-# abstract models
-# ============================================================
-
-
-class TimestampedModel(models.Model):
-    # created_at:
-    #   когда запись была создана в БД
-    # Пример:
-    #   2026-03-19 12:34:56
-    # Зачем:
-    #   для аудита, отладки, контроля импорта
-    created_at = models.DateTimeField(_("создано"), auto_now_add=True)
-
-    # updated_at:
-    #   когда запись последний раз обновлялась
-    # Пример:
-    #   2026-03-20 09:10:11
-    # Зачем:
-    #   для понимания актуальности данных
-    updated_at = models.DateTimeField(_("обновлено"), auto_now=True)
-
-    class Meta:
-        # Эта модель не создаёт свою таблицу.
-        # Она только даёт общие поля дочерним моделям.
-        abstract = True
 
 
 # ============================================================

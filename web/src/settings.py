@@ -55,6 +55,8 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'main.apps.MainConfig',
     'cars.apps.CarsConfig',
+    'catalog.apps.CatalogConfig',
+    'client.apps.ClientConfig'
 ]
 
 INSTALLED_APPS += THIRD_PARTY_APPS + LOCAL_APPS
