@@ -954,6 +954,134 @@ class Modification(TimestampedModel):
         # Удобный доступ к кузову
         return self.configuration.body_type
 
+    @property
+    def photo(self):
+        return getattr(self.configuration, "photo", None)
+
+
+# ============================================================
+# media assets
+# ============================================================
+
+
+class ConfigurationPhoto(TimestampedModel):
+    configuration = models.OneToOneField(
+        Configuration,
+        on_delete=models.CASCADE,
+        related_name="photo",
+        verbose_name=_("конфигурация"),
+    )
+
+    image = models.ImageField(
+        _("изображение"),
+        upload_to="cars/configuration_photos/",
+    )
+
+    source_file_name = models.CharField(
+        _("имя исходного файла"),
+        max_length=255,
+        blank=True,
+        db_index=True,
+    )
+
+    source_configuration_id = models.CharField(
+        _("source configuration id"),
+        max_length=64,
+        blank=True,
+        db_index=True,
+    )
+
+    alt_text = models.CharField(
+        _("alt текст"),
+        max_length=255,
+        blank=True,
+    )
+
+    is_main = models.BooleanField(
+        _("главное фото"),
+        default=True,
+    )
+
+    sort_order = models.PositiveIntegerField(
+        _("порядок сортировки"),
+        default=0,
+    )
+
+    class Meta:
+        verbose_name = _("фото конфигурации")
+        verbose_name_plural = _("фото конфигураций")
+        ordering = ("sort_order", "id")
+        indexes = [
+            models.Index(fields=["source_configuration_id"], name="cars_cfgphoto_src_cfg_idx"),
+            models.Index(fields=["is_main", "sort_order"], name="cars_cfgphoto_main_sort_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Фото: {self.configuration}"
+
+    @property
+    def image_url(self) -> str:
+        if self.image:
+            return self.image.url
+        return ""
+
+
+class MarkLogo(TimestampedModel):
+    mark = models.OneToOneField(
+        Mark,
+        on_delete=models.CASCADE,
+        related_name="logo",
+        verbose_name=_("марка"),
+    )
+
+    image = models.ImageField(
+        _("логотип"),
+        upload_to="cars/mark_logos/",
+    )
+
+    source_file_name = models.CharField(
+        _("имя исходного файла"),
+        max_length=255,
+        blank=True,
+        db_index=True,
+    )
+
+    source_mark_id = models.CharField(
+        _("source mark id"),
+        max_length=64,
+        blank=True,
+        db_index=True,
+    )
+
+    alt_text = models.CharField(
+        _("alt текст"),
+        max_length=255,
+        blank=True,
+    )
+
+    is_active = models.BooleanField(
+        _("активен"),
+        default=True,
+    )
+
+    class Meta:
+        verbose_name = _("логотип марки")
+        verbose_name_plural = _("логотипы марок")
+        ordering = ("mark__name",)
+        indexes = [
+            models.Index(fields=["source_mark_id"], name="cars_marklogo_src_mark_idx"),
+            models.Index(fields=["is_active"], name="cars_marklogo_active_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Логотип: {self.mark.name}"
+
+    @property
+    def image_url(self) -> str:
+        if self.image:
+            return self.image.url
+        return ""
+
 
 # ============================================================
 # specifications

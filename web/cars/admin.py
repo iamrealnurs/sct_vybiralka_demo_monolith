@@ -3,13 +3,16 @@ from __future__ import annotations
 from django.contrib import admin
 from django.db.models import Count, Exists, OuterRef
 from django.utils.translation import gettext_lazy as _
+from django.utils.html import format_html
 
 from .models import (
     BodyType,
     CarModel,
     Configuration,
+    ConfigurationPhoto,
     Generation,
     Mark,
+    MarkLogo,
     Modification,
     ModificationOption,
     ModificationRawSpecification,
@@ -305,6 +308,58 @@ class ModificationOptionInline(admin.TabularInline):
     classes = ("collapse",)
 
 
+class MarkLogoInline(admin.StackedInline):
+    model = MarkLogo
+    extra = 0
+    can_delete = True
+    max_num = 1
+    readonly_fields = ("logo_preview", "created_at", "updated_at")
+    fields = (
+        "image",
+        "logo_preview",
+        ("source_file_name", "source_mark_id"),
+        "alt_text",
+        "is_active",
+        ("created_at", "updated_at"),
+    )
+    classes = ("collapse",)
+
+    @admin.display(description=_("предпросмотр"))
+    def logo_preview(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="max-height: 80px; max-width: 180px; object-fit: contain; border: 1px solid #ddd; padding: 4px; background: white;" />',
+                obj.image.url,
+            )
+        return "-"
+
+
+class ConfigurationPhotoInline(admin.StackedInline):
+    model = ConfigurationPhoto
+    extra = 0
+    can_delete = True
+    max_num = 1
+    readonly_fields = ("photo_preview", "created_at", "updated_at")
+    fields = (
+        "image",
+        "photo_preview",
+        ("source_file_name", "source_configuration_id"),
+        "alt_text",
+        ("is_main", "sort_order"),
+        ("created_at", "updated_at"),
+    )
+    classes = ("collapse",)
+
+    @admin.display(description=_("предпросмотр"))
+    def photo_preview(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="max-height: 120px; max-width: 220px; object-fit: cover; border: 1px solid #ddd; padding: 4px; background: white;" />',
+                obj.image.url,
+            )
+        return "-"
+
+
 # ============================================================
 # admin actions
 # ============================================================
@@ -471,6 +526,7 @@ class MarkAdmin(admin.ModelAdmin):
         "is_popular",
         "year_from",
         "year_to",
+        "has_logo_badge",
         "models_count",
     )
     list_filter = (CountryRawFallbackFilter, "is_popular")
@@ -484,7 +540,7 @@ class MarkAdmin(admin.ModelAdmin):
     ordering = ("name",)
     list_per_page = 50
     readonly_fields = ("created_at", "updated_at")
-    inlines = (CarModelInline,)
+    inlines = (MarkLogoInline, CarModelInline)
 
     fieldsets = (
         (_("Идентификаторы"), {
@@ -509,11 +565,18 @@ class MarkAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.annotate(_models_count=Count("car_models", distinct=True))
+        return qs.annotate(
+            _models_count=Count("car_models", distinct=True),
+            _has_logo=Exists(MarkLogo.objects.filter(mark_id=OuterRef("pk"))),
+        )
 
     @admin.display(ordering="_models_count", description=_("моделей"))
     def models_count(self, obj):
         return obj._models_count
+    
+    @admin.display(boolean=True, description=_("лого"))
+    def has_logo_badge(self, obj):
+        return bool(getattr(obj, "_has_logo", False))
 
 
 @admin.register(CarModel)
@@ -637,6 +700,7 @@ class ConfigurationAdmin(admin.ModelAdmin):
         "source_id",
         "body_type",
         "doors_count",
+        "has_photo_badge",
         "modifications_count",
     )
     list_filter = ("body_type", "doors_count", "generation__model__mark")
@@ -654,7 +718,7 @@ class ConfigurationAdmin(admin.ModelAdmin):
     ordering = ("generation__model__mark__name", "generation__model__name", "name")
     list_per_page = 50
     readonly_fields = ("created_at", "updated_at")
-    inlines = (ModificationInline,)
+    inlines = (ConfigurationPhotoInline, ModificationInline)
 
     fieldsets = (
         (_("Идентификаторы"), {
@@ -680,11 +744,18 @@ class ConfigurationAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.annotate(_modifications_count=Count("modifications", distinct=True))
+        return qs.annotate(
+            _modifications_count=Count("modifications", distinct=True),
+            _has_photo=Exists(ConfigurationPhoto.objects.filter(configuration_id=OuterRef("pk"))),
+        )
 
     @admin.display(ordering="_modifications_count", description=_("модификаций"))
     def modifications_count(self, obj):
         return obj._modifications_count
+
+    @admin.display(boolean=True, description=_("фото"))
+    def has_photo_badge(self, obj):
+        return bool(getattr(obj, "_has_photo", False))
 
 
 @admin.register(Modification)
@@ -1052,6 +1123,137 @@ class ModificationOptionAdmin(admin.ModelAdmin):
     def category_name(self, obj):
         if obj.option_definition and obj.option_definition.category:
             return obj.option_definition.category.name
+        return "-"
+
+
+@admin.register(MarkLogo)
+class MarkLogoAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "mark",
+        "source_mark_id",
+        "is_active",
+        "logo_preview_small",
+        "created_at",
+        "updated_at",
+    )
+    search_fields = (
+        "mark__name",
+        "mark__name_ru",
+        "mark__source_id",
+        "source_mark_id",
+        "source_file_name",
+        "alt_text",
+    )
+    list_filter = ("is_active",)
+    autocomplete_fields = ("mark",)
+    readonly_fields = ("logo_preview", "created_at", "updated_at")
+    list_per_page = 50
+
+    fieldsets = (
+        (_("Связь"), {
+            "fields": ("mark",)
+        }),
+        (_("Изображение"), {
+            "fields": (
+                "image",
+                "logo_preview",
+                ("source_file_name", "source_mark_id"),
+                "alt_text",
+                "is_active",
+            )
+        }),
+        (_("Служебная информация"), {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+    @admin.display(description=_("предпросмотр"))
+    def logo_preview(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="max-height: 120px; max-width: 240px; object-fit: contain; border: 1px solid #ddd; padding: 4px; background: white;" />',
+                obj.image.url,
+            )
+        return "-"
+
+    @admin.display(description=_("лого"))
+    def logo_preview_small(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="height: 36px; max-width: 80px; object-fit: contain;" />',
+                obj.image.url,
+            )
+        return "-"
+
+
+@admin.register(ConfigurationPhoto)
+class ConfigurationPhotoAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "configuration",
+        "configuration_source_id",
+        "source_configuration_id",
+        "is_main",
+        "photo_preview_small",
+        "created_at",
+        "updated_at",
+    )
+    search_fields = (
+        "configuration__name",
+        "configuration__source_id",
+        "configuration__generation__name",
+        "configuration__generation__model__name",
+        "configuration__generation__model__mark__name",
+        "source_configuration_id",
+        "source_file_name",
+        "alt_text",
+    )
+    list_filter = ("is_main", "configuration__generation__model__mark")
+    autocomplete_fields = ("configuration",)
+    readonly_fields = ("photo_preview", "created_at", "updated_at")
+    list_per_page = 50
+
+    fieldsets = (
+        (_("Связь"), {
+            "fields": ("configuration",)
+        }),
+        (_("Изображение"), {
+            "fields": (
+                "image",
+                "photo_preview",
+                ("source_file_name", "source_configuration_id"),
+                "alt_text",
+                ("is_main", "sort_order"),
+            )
+        }),
+        (_("Служебная информация"), {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+    @admin.display(description=_("source id конфигурации"))
+    def configuration_source_id(self, obj):
+        return obj.configuration.source_id
+
+    @admin.display(description=_("предпросмотр"))
+    def photo_preview(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="max-height: 180px; max-width: 320px; object-fit: cover; border: 1px solid #ddd; padding: 4px; background: white;" />',
+                obj.image.url,
+            )
+        return "-"
+
+    @admin.display(description=_("фото"))
+    def photo_preview_small(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="height: 48px; width: 86px; object-fit: cover; border-radius: 6px;" />',
+                obj.image.url,
+            )
         return "-"
 
 
