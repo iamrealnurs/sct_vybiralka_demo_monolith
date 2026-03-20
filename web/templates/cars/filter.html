@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Фильтр автомобилей</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { color-scheme: light; }
+        body { background: #f8fafc; }
+
+        .glass {
+            backdrop-filter: blur(14px);
+            background: rgba(255,255,255,.82);
+        }
+
+        .thin-scrollbar::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .thin-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148,163,184,.55);
+            border-radius: 999px;
+        }
+
+        .thin-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .autocomplete-root {
+            position: relative;
+        }
+
+        .autocomplete-panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            z-index: 80;
+            max-height: 260px;
+            overflow: auto;
+            border: 1px solid rgb(226 232 240);
+            border-radius: 18px;
+            background: rgba(255,255,255,.98);
+            box-shadow: 0 20px 40px rgba(15,23,42,.12);
+            backdrop-filter: blur(10px);
+        }
+
+        .autocomplete-option {
+            padding: 12px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            color: rgb(15 23 42);
+            border-bottom: 1px solid rgb(241 245 249);
+        }
+
+        .autocomplete-option:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-option:hover,
+        .autocomplete-option.active {
+            background: rgb(239 246 255);
+            color: rgb(29 78 216);
+        }
+
+        .autocomplete-empty {
+            padding: 12px 14px;
+            font-size: 14px;
+            color: rgb(100 116 139);
+        }
+
+        .autocomplete-mark {
+            font-weight: 700;
+            background: transparent;
+            color: inherit;
+        }
+
+        .multi-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgb(239 246 255);
+            color: rgb(29 78 216);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .debug-pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-900 antialiased">
+<div class="min-h-screen">
+    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+        <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <div class="text-sm text-slate-500">Cars → Filter</div>
+                    <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900">Фильтр автомобилей</h1>
+                    <p class="mt-2 max-w-3xl text-sm text-slate-500">
+                        Одиночный выбор для марки и модели, множественный выбор для остальных характеристик.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                    Найдено автомобилей:
+                    <span id="results-count" class="font-semibold text-slate-900">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div class="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)_360px]">
+            <section class="glass rounded-[28px] border border-slate-200 p-5 shadow-sm">
+                <h2 class="text-xl font-semibold text-slate-900">Фильтры</h2>
+
+                <div class="mt-5 space-y-5">
+                    <div class="autocomplete-root">
+                        <label class="mb-2 block text-sm text-slate-700">Марка автомобиля</label>
+                        <input
+                            id="filter-mark"
+                            autocomplete="off"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                            placeholder="Начните вводить марку"
+                        />
+                        <div id="filter-mark-panel" class="autocomplete-panel hidden"></div>
+                    </div>
+
+                    <div class="autocomplete-root">
+                        <label class="mb-2 block text-sm text-slate-700">Модель автомобиля</label>
+                        <input
+                            id="filter-model"
+                            autocomplete="off"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                            placeholder="Начните вводить модель"
+                        />
+                        <div id="filter-model-panel" class="autocomplete-panel hidden"></div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm text-slate-700">Поколение</label>
+                        <div class="autocomplete-root">
+                            <input
+                                id="filter-generation-input"
+                                autocomplete="off"
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                                placeholder="Добавить поколение"
+                            />
+                            <div id="filter-generation-panel" class="autocomplete-panel hidden"></div>
+                        </div>
+                        <div id="filter-generation-chips" class="mt-3 flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm text-slate-700">Конфигурация</label>
+                        <div class="autocomplete-root">
+                            <input
+                                id="filter-configuration-input"
+                                autocomplete="off"
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                                placeholder="Добавить конфигурацию"
+                            />
+                            <div id="filter-configuration-panel" class="autocomplete-panel hidden"></div>
+                        </div>
+                        <div id="filter-configuration-chips" class="mt-3 flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm text-slate-700">Тип двигателя</label>
+                        <div class="autocomplete-root">
+                            <input
+                                id="filter-engine-input"
+                                autocomplete="off"
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                                placeholder="Добавить тип двигателя"
+                            />
+                            <div id="filter-engine-panel" class="autocomplete-panel hidden"></div>
+                        </div>
+                        <div id="filter-engine-chips" class="mt-3 flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm text-slate-700">Привод</label>
+                        <div class="autocomplete-root">
+                            <input
+                                id="filter-drive-input"
+                                autocomplete="off"
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                                placeholder="Добавить привод"
+                            />
+                            <div id="filter-drive-panel" class="autocomplete-panel hidden"></div>
+                        </div>
+                        <div id="filter-drive-chips" class="mt-3 flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm text-slate-700">Коробка передач</label>
+                        <div class="autocomplete-root">
+                            <input
+                                id="filter-transmission-input"
+                                autocomplete="off"
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                                placeholder="Добавить коробку передач"
+                            />
+                            <div id="filter-transmission-panel" class="autocomplete-panel hidden"></div>
+                        </div>
+                        <div id="filter-transmission-chips" class="mt-3 flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <button
+                        id="reset-filters-btn"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                        Сбросить все фильтры
+                    </button>
+                </div>
+            </section>
+
+            <section class="glass rounded-[28px] border border-slate-200 p-5 shadow-sm">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                    <h2 class="text-xl font-semibold text-slate-900">Результаты</h2>
+                    <span id="results-count-badge" class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">0</span>
+                </div>
+
+                <div id="results-list" class="max-h-[75vh] space-y-4 overflow-auto thin-scrollbar pr-1"></div>
+            </section>
+
+            <aside class="glass rounded-[28px] border border-slate-200 p-5 shadow-sm">
+                <h2 class="text-xl font-semibold text-slate-900">Логи отладки</h2>
+                <p class="mt-2 text-sm text-slate-500">
+                    Здесь видно, какие фильтры ушли на сервер и что сервер вернул.
+                </p>
+
+                <div class="mt-4 space-y-4">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Последний запрос</div>
+                        <pre id="debug-request" class="debug-pre mt-2 text-xs text-slate-700"></pre>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Последний ответ</div>
+                        <pre id="debug-response" class="debug-pre mt-2 text-xs text-slate-700"></pre>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Системные логи</div>
+                        <div id="debug-log-stream" class="mt-2 max-h-[30vh] overflow-auto thin-scrollbar space-y-2 text-xs text-slate-700"></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+</div>
+
+<script>
+const API_URL = "/cars-filter/api/";
+
+const state = {
+    filters: {
+        mark: "",
+        model: "",
+        generations: [],
+        configurations: [],
+        engine_types: [],
+        drive_types: [],
+        transmissions: [],
+    },
+    options: {
+        marks: [],
+        models: [],
+        generations: [],
+        configurations: [],
+        engine_types: [],
+        drive_types: [],
+        transmissions: [],
+    },
+    results: [],
+    count: 0,
+    loading: false,
+};
+
+function logInfo(message, payload = null) {
+    console.log("[cars-filter][INFO]", message, payload ?? "");
+    appendDebugLog("INFO", message, payload);
+}
+
+function logWarn(message, payload = null) {
+    console.warn("[cars-filter][WARN]", message, payload ?? "");
+    appendDebugLog("WARN", message, payload);
+}
+
+function logError(message, payload = null) {
+    console.error("[cars-filter][ERROR]", message, payload ?? "");
+    appendDebugLog("ERROR", message, payload);
+}
+
+function appendDebugLog(level, message, payload = null) {
+    const container = document.getElementById("debug-log-stream");
+    if (!container) return;
+
+    const line = document.createElement("div");
+    line.className = "rounded-xl border border-slate-200 bg-white px-3 py-2";
+    line.innerHTML = `
+        <div class="font-semibold text-slate-900">${escapeHtml(level)} · ${escapeHtml(message)}</div>
+        ${payload !== null ? `<pre class="debug-pre mt-1 text-[11px] text-slate-600">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>` : ""}
+    `;
+    container.prepend(line);
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function formatNumber(value) {
+    return new Intl.NumberFormat("ru-RU").format(Number(value || 0));
+}
+
+function buildQueryString() {
+    const params = new URLSearchParams();
+
+    if (state.filters.mark) params.append("mark", state.filters.mark);
+    if (state.filters.model) params.append("model", state.filters.model);
+
+    state.filters.generations.forEach(v => params.append("generations", v));
+    state.filters.configurations.forEach(v => params.append("configurations", v));
+    state.filters.engine_types.forEach(v => params.append("engine_types", v));
+    state.filters.drive_types.forEach(v => params.append("drive_types", v));
+    state.filters.transmissions.forEach(v => params.append("transmissions", v));
+
+    return params.toString();
+}
+
+async function fetchData() {
+    const queryString = buildQueryString();
+    const url = queryString ? `${API_URL}?${queryString}` : API_URL;
+
+    document.getElementById("debug-request").textContent = url;
+    logInfo("Отправляем запрос", { url, filters: structuredClone(state.filters) });
+
+    state.loading = true;
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+
+        document.getElementById("debug-response").textContent = JSON.stringify(payload, null, 2);
+        logInfo("Получен ответ", payload);
+
+        state.options = payload.options || state.options;
+        state.results = payload.results || [];
+        state.count = payload.count || 0;
+
+        renderCount();
+        renderResults();
+        renderAllSingleAutocompleteSources();
+        renderAllMultiChips();
+    } catch (error) {
+        logError("Ошибка загрузки фильтра", {
+            message: error.message,
+            stack: error.stack,
+        });
+    } finally {
+        state.loading = false;
+    }
+}
+
+function renderCount() {
+    const countText = formatNumber(state.count);
+    document.getElementById("results-count").textContent = countText;
+    document.getElementById("results-count-badge").textContent = countText;
+}
+
+function renderResults() {
+    const container = document.getElementById("results-list");
+
+    if (!state.results.length) {
+        container.innerHTML = `
+            <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                По текущим фильтрам автомобили не найдены.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = state.results.map(item => {
+        const markName = item.mark?.name || item.mark?.name || "—";
+        const modelName = item.model?.name || item.model?.name || "—";
+        const generationName = item.generation?.name || "—";
+        const configurationName = item.configuration?.name || "—";
+
+        return `
+            <div class="rounded-3xl border border-slate-200 bg-white p-4">
+                <div class="text-lg font-semibold text-slate-900">
+                    ${escapeHtml(markName)} ${escapeHtml(modelName)}
+                </div>
+
+                <div class="mt-1 text-sm text-slate-500">
+                    ${escapeHtml(generationName)} · ${escapeHtml(configurationName)}
+                </div>
+
+                <div class="mt-2 text-sm text-slate-800">
+                    ${escapeHtml(item.name || "—")}
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${tag(item.specification?.powertrain_type || "—")}
+                    ${tag(item.specification?.drive_type || "—")}
+                    ${tag(item.specification?.transmission_type || "—")}
+                    ${tag(item.specification?.horse_power_hp ? `${item.specification.horse_power_hp} л.с.` : "—")}
+                </div>
+
+                <div class="mt-3 text-xs font-mono text-slate-500">
+                    source_id: ${escapeHtml(item.source_id || "—")}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function tag(text) {
+    return `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">${escapeHtml(text)}</span>`;
+}
+
+function getAutocompleteMatches(values, query, limit = 30) {
+    const q = String(query || "").trim().toLowerCase();
+
+    if (!q) return values.slice(0, limit);
+
+    const startsWith = [];
+    const includes = [];
+
+    for (const item of values) {
+        const label = item.label.toLowerCase();
+
+        if (label.startsWith(q)) {
+            startsWith.push(item);
+        } else if (label.includes(q)) {
+            includes.push(item);
+        }
+    }
+
+    return [...startsWith, ...includes].slice(0, limit);
+}
+
+function highlightMatch(text, query) {
+    const safeText = escapeHtml(text || "");
+    const q = String(query || "").trim();
+    if (!q) return safeText;
+
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${escaped})`, "ig");
+    return safeText.replace(regex, '<span class="autocomplete-mark">$1</span>');
+}
+
+function setupSingleAutocomplete({ inputId, panelId, sourceGetter, valueGetter, onSelect, onClearDependent }) {
+    const input = document.getElementById(inputId);
+    const panel = document.getElementById(panelId);
+
+    if (!input || !panel) {
+        logError("Single autocomplete init failed", { inputId, panelId });
+        return;
+    }
+
+    const currentValue = valueGetter();
+    const items = sourceGetter();
+
+    const selectedItem = items.find(item => String(item.value) === String(currentValue));
+    input.value = selectedItem ? selectedItem.label : input.value;
+
+    let currentItems = [];
+    let activeIndex = -1;
+
+    function closePanel() {
+        panel.classList.add("hidden");
+        panel.innerHTML = "";
+        currentItems = [];
+        activeIndex = -1;
+    }
+
+    function openPanel() {
+        panel.classList.remove("hidden");
+    }
+
+    function renderPanel(query = "") {
+        const matches = getAutocompleteMatches(items, query, 30);
+        currentItems = matches;
+        activeIndex = -1;
+
+        if (!matches.length) {
+            panel.innerHTML = `<div class="autocomplete-empty">Ничего не найдено</div>`;
+            openPanel();
+            return;
+        }
+
+        panel.innerHTML = matches.map((item, index) => `
+            <div
+                class="autocomplete-option"
+                data-index="${index}"
+                data-value="${escapeHtml(item.value)}"
+                data-label="${escapeHtml(item.label)}"
+            >
+                ${highlightMatch(item.label, query)}
+            </div>
+        `).join("");
+
+        panel.querySelectorAll(".autocomplete-option").forEach(option => {
+            option.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                const selectedIndex = Number(option.dataset.index);
+                const selected = currentItems[selectedIndex];
+                if (!selected) return;
+
+                input.value = selected.label;
+                closePanel();
+
+                logInfo("Выбрано single значение", { inputId, selected });
+
+                onSelect(selected.value);
+            });
+        });
+
+        openPanel();
+    }
+
+    function updateActiveOption() {
+        const options = panel.querySelectorAll(".autocomplete-option");
+        options.forEach((el, index) => {
+            el.classList.toggle("active", index === activeIndex);
+            if (index === activeIndex) {
+                el.scrollIntoView({ block: "nearest" });
+            }
+        });
+    }
+
+    input.addEventListener("focus", () => {
+        renderPanel(input.value || "");
+    });
+
+    input.addEventListener("click", () => {
+        renderPanel(input.value || "");
+    });
+
+    input.addEventListener("input", () => {
+        const typed = input.value.trim();
+
+        if (!typed) {
+            logWarn("Single field cleared by typing", { inputId });
+            onClearDependent();
+        }
+
+        renderPanel(typed);
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (panel.classList.contains("hidden")) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                renderPanel(input.value || "");
+            }
+            return;
+        }
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, currentItems.length - 1);
+            updateActiveOption();
+            return;
+        }
+
+        if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            updateActiveOption();
+            return;
+        }
+
+        if (e.key === "Enter") {
+            if (activeIndex >= 0 && currentItems[activeIndex]) {
+                e.preventDefault();
+                const selected = currentItems[activeIndex];
+                input.value = selected.label;
+                closePanel();
+                onSelect(selected.value);
+            }
+            return;
+        }
+
+        if (e.key === "Escape") {
+            e.preventDefault();
+            closePanel();
+        }
+    });
+
+    input.addEventListener("blur", () => {
+        setTimeout(() => closePanel(), 150);
+    });
+}
+
+function setupMultiAutocomplete({ inputId, panelId, selectedValuesGetter, optionsGetter, optionLabelGetter, onAdd }) {
+    const input = document.getElementById(inputId);
+    const panel = document.getElementById(panelId);
+
+    if (!input || !panel) {
+        logError("Multi autocomplete init failed", { inputId, panelId });
+        return;
+    }
+
+    let currentItems = [];
+    let activeIndex = -1;
+
+    function closePanel() {
+        panel.classList.add("hidden");
+        panel.innerHTML = "";
+        currentItems = [];
+        activeIndex = -1;
+    }
+
+    function openPanel() {
+        panel.classList.remove("hidden");
+    }
+
+    function renderPanel(query = "") {
+        const selectedValues = new Set(selectedValuesGetter().map(String));
+        const sourceItems = optionsGetter()
+            .filter(item => !selectedValues.has(String(item.value)));
+
+        const matches = getAutocompleteMatches(sourceItems, query, 30);
+        currentItems = matches;
+        activeIndex = -1;
+
+        if (!matches.length) {
+            panel.innerHTML = `<div class="autocomplete-empty">Ничего не найдено</div>`;
+            openPanel();
+            return;
+        }
+
+        panel.innerHTML = matches.map((item, index) => `
+            <div class="autocomplete-option" data-index="${index}">
+                ${highlightMatch(item.label, query)}
+            </div>
+        `).join("");
+
+        panel.querySelectorAll(".autocomplete-option").forEach(option => {
+            option.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                const selectedIndex = Number(option.dataset.index);
+                const selected = currentItems[selectedIndex];
+                if (!selected) return;
+
+                logInfo("Выбрано multi значение", { inputId, selected });
+
+                onAdd(selected.value);
+                input.value = "";
+                closePanel();
+            });
+        });
+
+        openPanel();
+    }
+
+    function updateActiveOption() {
+        const options = panel.querySelectorAll(".autocomplete-option");
+        options.forEach((el, index) => {
+            el.classList.toggle("active", index === activeIndex);
+            if (index === activeIndex) {
+                el.scrollIntoView({ block: "nearest" });
+            }
+        });
+    }
+
+    input.addEventListener("focus", () => {
+        renderPanel(input.value || "");
+    });
+
+    input.addEventListener("click", () => {
+        renderPanel(input.value || "");
+    });
+
+    input.addEventListener("input", () => {
+        renderPanel(input.value || "");
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (panel.classList.contains("hidden")) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                renderPanel(input.value || "");
+            }
+            return;
+        }
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, currentItems.length - 1);
+            updateActiveOption();
+            return;
+        }
+
+        if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            updateActiveOption();
+            return;
+        }
+
+        if (e.key === "Enter") {
+            if (activeIndex >= 0 && currentItems[activeIndex]) {
+                e.preventDefault();
+                const selected = currentItems[activeIndex];
+                onAdd(selected.value);
+                input.value = "";
+                closePanel();
+            }
+            return;
+        }
+
+        if (e.key === "Escape") {
+            e.preventDefault();
+            closePanel();
+        }
+    });
+
+    input.addEventListener("blur", () => {
+        setTimeout(() => closePanel(), 150);
+    });
+}
+
+function renderAllSingleAutocompleteSources() {
+    setupSingleAutocomplete({
+        inputId: "filter-mark",
+        panelId: "filter-mark-panel",
+        sourceGetter: () => state.options.marks.map(item => ({
+            value: String(item.id),
+            label: item.name || item.name || `Марка #${item.id}`,
+        })),
+        valueGetter: () => state.filters.mark,
+        onSelect: (value) => {
+            state.filters.mark = String(value);
+            state.filters.model = "";
+            state.filters.generations = [];
+            state.filters.configurations = [];
+            fetchData();
+        },
+        onClearDependent: () => {
+            state.filters.mark = "";
+            state.filters.model = "";
+            state.filters.generations = [];
+            state.filters.configurations = [];
+            fetchData();
+        }
+    });
+
+    setupSingleAutocomplete({
+        inputId: "filter-model",
+        panelId: "filter-model-panel",
+        sourceGetter: () => state.options.models.map(item => ({
+            value: String(item.id),
+            label: item.name || item.name || `Модель #${item.id}`,
+        })),
+        valueGetter: () => state.filters.model,
+        onSelect: (value) => {
+            state.filters.model = String(value);
+            state.filters.generations = [];
+            state.filters.configurations = [];
+            fetchData();
+        },
+        onClearDependent: () => {
+            state.filters.model = "";
+            state.filters.generations = [];
+            state.filters.configurations = [];
+            fetchData();
+        }
+    });
+
+    setupMultiAutocomplete({
+        inputId: "filter-generation-input",
+        panelId: "filter-generation-panel",
+        selectedValuesGetter: () => state.filters.generations,
+        optionsGetter: () => state.options.generations.map(item => ({
+            value: String(item.id),
+            label: buildGenerationLabel(item),
+        })),
+        onAdd: (value) => {
+            if (!state.filters.generations.includes(String(value))) {
+                state.filters.generations.push(String(value));
+                fetchData();
+            }
+        }
+    });
+
+    setupMultiAutocomplete({
+        inputId: "filter-configuration-input",
+        panelId: "filter-configuration-panel",
+        selectedValuesGetter: () => state.filters.configurations,
+        optionsGetter: () => state.options.configurations.map(item => ({
+            value: String(item.id),
+            label: item.name || `Конфигурация #${item.id}`,
+        })),
+        onAdd: (value) => {
+            if (!state.filters.configurations.includes(String(value))) {
+                state.filters.configurations.push(String(value));
+                fetchData();
+            }
+        }
+    });
+
+    setupMultiAutocomplete({
+        inputId: "filter-engine-input",
+        panelId: "filter-engine-panel",
+        selectedValuesGetter: () => state.filters.engine_types,
+        optionsGetter: () => state.options.engine_types.map(item => ({
+            value: String(item),
+            label: String(item),
+        })),
+        onAdd: (value) => {
+            if (!state.filters.engine_types.includes(String(value))) {
+                state.filters.engine_types.push(String(value));
+                fetchData();
+            }
+        }
+    });
+
+    setupMultiAutocomplete({
+        inputId: "filter-drive-input",
+        panelId: "filter-drive-panel",
+        selectedValuesGetter: () => state.filters.drive_types,
+        optionsGetter: () => state.options.drive_types.map(item => ({
+            value: String(item),
+            label: String(item),
+        })),
+        onAdd: (value) => {
+            if (!state.filters.drive_types.includes(String(value))) {
+                state.filters.drive_types.push(String(value));
+                fetchData();
+            }
+        }
+    });
+
+    setupMultiAutocomplete({
+        inputId: "filter-transmission-input",
+        panelId: "filter-transmission-panel",
+        selectedValuesGetter: () => state.filters.transmissions,
+        optionsGetter: () => state.options.transmissions.map(item => ({
+            value: String(item),
+            label: String(item),
+        })),
+        onAdd: (value) => {
+            if (!state.filters.transmissions.includes(String(value))) {
+                state.filters.transmissions.push(String(value));
+                fetchData();
+            }
+        }
+    });
+}
+
+function buildGenerationLabel(item) {
+    const name = item.name || "Без названия";
+    const years = [item.year_from, item.year_to].filter(Boolean).join("–");
+    return years ? `${name} (${years})` : name;
+}
+
+function renderAllMultiChips() {
+    renderChips({
+        containerId: "filter-generation-chips",
+        values: state.filters.generations,
+        items: state.options.generations.map(item => ({
+            value: String(item.id),
+            label: buildGenerationLabel(item),
+        })),
+        onRemove: (value) => {
+            state.filters.generations = state.filters.generations.filter(v => String(v) !== String(value));
+            fetchData();
+        }
+    });
+
+    renderChips({
+        containerId: "filter-configuration-chips",
+        values: state.filters.configurations,
+        items: state.options.configurations.map(item => ({
+            value: String(item.id),
+            label: item.name || `Конфигурация #${item.id}`,
+        })),
+        onRemove: (value) => {
+            state.filters.configurations = state.filters.configurations.filter(v => String(v) !== String(value));
+            fetchData();
+        }
+    });
+
+    renderChips({
+        containerId: "filter-engine-chips",
+        values: state.filters.engine_types,
+        items: state.options.engine_types.map(item => ({
+            value: String(item),
+            label: String(item),
+        })),
+        onRemove: (value) => {
+            state.filters.engine_types = state.filters.engine_types.filter(v => String(v) !== String(value));
+            fetchData();
+        }
+    });
+
+    renderChips({
+        containerId: "filter-drive-chips",
+        values: state.filters.drive_types,
+        items: state.options.drive_types.map(item => ({
+            value: String(item),
+            label: String(item),
+        })),
+        onRemove: (value) => {
+            state.filters.drive_types = state.filters.drive_types.filter(v => String(v) !== String(value));
+            fetchData();
+        }
+    });
+
+    renderChips({
+        containerId: "filter-transmission-chips",
+        values: state.filters.transmissions,
+        items: state.options.transmissions.map(item => ({
+            value: String(item),
+            label: String(item),
+        })),
+        onRemove: (value) => {
+            state.filters.transmissions = state.filters.transmissions.filter(v => String(v) !== String(value));
+            fetchData();
+        }
+    });
+}
+
+function renderChips({ containerId, values, items, onRemove }) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        logError("Chip container not found", { containerId });
+        return;
+    }
+
+    const byValue = new Map(items.map(item => [String(item.value), item.label]));
+
+    if (!values.length) {
+        container.innerHTML = "";
+        return;
+    }
+
+    container.innerHTML = values.map(value => {
+        const label = byValue.get(String(value)) || String(value);
+        return `
+            <div class="multi-chip">
+                <span>${escapeHtml(label)}</span>
+                <button type="button" data-value="${escapeHtml(value)}" class="text-blue-700 hover:text-blue-900">×</button>
+            </div>
+        `;
+    }).join("");
+
+    container.querySelectorAll("button[data-value]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            onRemove(btn.dataset.value);
+        });
+    });
+}
+
+function bindResetButton() {
+    const btn = document.getElementById("reset-filters-btn");
+    if (!btn) {
+        logError("Reset button not found");
+        return;
+    }
+
+    btn.addEventListener("click", () => {
+        logWarn("Сброс всех фильтров");
+        state.filters = {
+            mark: "",
+            model: "",
+            generations: [],
+            configurations: [],
+            engine_types: [],
+            drive_types: [],
+            transmissions: [],
+        };
+
+        document.getElementById("filter-mark").value = "";
+        document.getElementById("filter-model").value = "";
+        document.getElementById("filter-generation-input").value = "";
+        document.getElementById("filter-configuration-input").value = "";
+        document.getElementById("filter-engine-input").value = "";
+        document.getElementById("filter-drive-input").value = "";
+        document.getElementById("filter-transmission-input").value = "";
+
+        fetchData();
+    });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    logInfo("DOM fully loaded");
+    bindResetButton();
+    await fetchData();
+});
+</script>
+</body>
+</html>
