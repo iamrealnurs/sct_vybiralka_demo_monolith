@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
-from django.template.defaultfilters import slugify
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
 from cars.models import Modification
@@ -1037,4 +1037,6 @@ def validate_package_has_items(package: CarServicePackage) -> None:
     """
     if not package.items.filter(is_deleted=False).exists():
         raise ValidationError(_("У пакета должен быть хотя бы один элемент."))
+
+
 
