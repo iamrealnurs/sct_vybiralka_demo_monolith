@@ -12,6 +12,7 @@ urlpatterns = [
     path(f'{admin_url}/', admin.site.urls),
     path('api/', include('rest_framework.urls')),
     path('rosetta/', include('rosetta.urls')),
+    path('staff/', include('api.staff.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]

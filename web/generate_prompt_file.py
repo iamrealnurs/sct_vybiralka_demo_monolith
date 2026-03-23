@@ -5,9 +5,8 @@ import subprocess
 file_paths = [
     # Models
     "main/models.py",
-    "catalog/models.py",
     "cars/models.py",
-    "cars/admin.py",
+    "catalog/models.py",
     "client/models.py"
 ]
 
