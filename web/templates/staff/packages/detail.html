@@ -1,0 +1,297 @@
+{% extends "staff/base.html" %}
+
+{% block title %}{{ package.display_title }}{% endblock %}
+
+{% block page_header %}
+    {% include "staff/packages/_page_header.html" with
+        breadcrumbs=breadcrumbs
+        title=package.display_title
+        subtitle=package.slug
+        status_label=package.get_status_display
+        status_tone=status_tone
+        show_actions=False
+    %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'staff:package_list' %}" class="staff-btn-secondary">
+            Назад к списку
+        </a>
+        <a href="#" class="staff-btn-secondary">
+            Редактировать
+        </a>
+        <a href="#" class="staff-btn-danger">
+            Удалить
+        </a>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <!-- Левая колонка -->
+        <div class="xl:col-span-8 space-y-6">
+            <!-- Основная информация -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Основная информация</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Базовые данные пакета, категория, slug и технические метаданные.
+                    </p>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 text-sm">
+                    <div>
+                        <div class="text-slate-500">ID</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.id }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Slug</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.slug }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Внутреннее имя</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.name }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Публичный заголовок</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.public_title|default:"—" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Категория</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.category.name|default:"—" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Modification source ID</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.modification_source_id|default:"—" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Создан</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.created_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Обновлён</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.updated_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Vehicle -->
+            {% include "staff/packages/_vehicle_card.html" with
+                vehicle=vehicle
+                card_title="Автомобиль"
+                card_subtitle="Полная цепочка привязки пакета к модификации."
+            %}
+
+            <!-- Promo -->
+            {% include "staff/packages/_promo_card.html" with
+                mode="detail"
+                package=package
+                card_title="Promo"
+                card_subtitle="Параметры акции и периода действия."
+            %}
+
+            <!-- Тексты -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Тексты</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Короткий, внутренний и публичный текст пакета.
+                    </p>
+                </div>
+
+                <div class="mt-5 space-y-4 text-sm">
+                    <div>
+                        <div class="text-slate-500">Короткое описание</div>
+                        <div class="mt-1 whitespace-pre-line text-slate-900">
+                            {{ package.description_short|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Внутреннее описание</div>
+                        <div class="mt-1 whitespace-pre-line text-slate-900">
+                            {{ package.description|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Публичное описание</div>
+                        <div class="mt-1 whitespace-pre-line text-slate-900">
+                            {{ package.description_public|default:"—" }}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Категории состава -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Категории состава</h2>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Локальные категории, к которым привязаны строки пакета.
+                        </p>
+                    </div>
+                    <a href="#" class="staff-btn-secondary">Добавить категорию</a>
+                </div>
+
+                <div class="mt-5 space-y-3">
+                    {% for category in item_categories %}
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                    <div class="font-medium text-slate-900">{{ category.name }}</div>
+                                    <div class="mt-1 text-sm text-slate-500">
+                                        {{ category.description|default:"Без описания" }}
+                                    </div>
+                                </div>
+                                <div class="text-sm text-slate-500">
+                                    sort: {{ category.sort_order }}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-sm text-slate-500">
+                            Категории состава ещё не добавлены.
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Состав пакета -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Состав пакета</h2>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Номенклатура сгруппирована по локальным категориям пакета.
+                        </p>
+                    </div>
+                    <a href="#" class="staff-btn-secondary">Добавить позицию</a>
+                </div>
+
+                <div class="mt-5 space-y-6">
+                    {% for group in grouped_items %}
+                        <section class="space-y-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 class="text-base font-semibold text-slate-900">{{ group.category.name }}</h3>
+                                    <p class="mt-1 text-sm text-slate-500">
+                                        {{ group.category.description|default:"" }}
+                                    </p>
+                                </div>
+                                <div class="text-sm text-slate-500">
+                                    {{ group.items|length }} поз.
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto thin-scrollbar rounded-xl border border-slate-200">
+                                <table class="min-w-full text-sm">
+                                    <thead class="border-b border-slate-200 bg-slate-50">
+                                        <tr class="text-left text-slate-600">
+                                            <th class="px-4 py-3 font-semibold">Sort</th>
+                                            <th class="px-4 py-3 font-semibold">Артикул</th>
+                                            <th class="px-4 py-3 font-semibold">Название</th>
+                                            <th class="px-4 py-3 font-semibold">Тип</th>
+                                            <th class="px-4 py-3 font-semibold">Ед.</th>
+                                            <th class="px-4 py-3 font-semibold">Qty</th>
+                                            <th class="px-4 py-3 font-semibold">Скидка %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200">
+                                        {% for item in group.items %}
+                                            <tr class="align-top">
+                                                <td class="px-4 py-3">{{ item.sort_order }}</td>
+                                                <td class="px-4 py-3">{{ item.article_snapshot|default:"—" }}</td>
+                                                <td class="px-4 py-3">{{ item.name_snapshot|default:"—" }}</td>
+                                                <td class="px-4 py-3">{{ item.item_type_snapshot|default:"—" }}</td>
+                                                <td class="px-4 py-3">{{ item.unit_snapshot|default:"—" }}</td>
+                                                <td class="px-4 py-3">{{ item.quantity }}</td>
+                                                <td class="px-4 py-3">{{ item.discount_percent }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="px-4 py-6 text-center text-slate-500">
+                                                    В этой категории пока нет позиций.
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    {% empty %}
+                        <div class="text-sm text-slate-500">
+                            Состав пакета пока не заполнен.
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <!-- Правая колонка -->
+        <div class="xl:col-span-4 space-y-6">
+            {% include "staff/packages/_image_card.html" with
+                mode="detail"
+                package=package
+                card_title="Изображение"
+                card_subtitle="Главная картинка пакета."
+            %}
+
+            {% include "staff/packages/_price_summary.html" with
+                mode="detail"
+                package=package
+                card_title="Сводка цен"
+                card_subtitle="Все вычисляемые ценовые поля пакета."
+            %}
+
+            <!-- Client preview -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Client preview</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Упрощённое представление пакета так, как его может видеть клиент.
+                    </p>
+                </div>
+
+                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                    {% if package.image_url %}
+                        <img
+                            src="{{ package.image_url }}"
+                            alt="{{ package.display_title }}"
+                            class="h-48 w-full object-cover"
+                        >
+                    {% endif %}
+
+                    <div class="p-4">
+                        {% if package.is_promo %}
+                            <div class="inline-flex rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-medium text-fuchsia-700">
+                                {{ package.promo_badge|default:"Акция" }}
+                            </div>
+                        {% endif %}
+
+                        <h3 class="mt-3 text-lg font-semibold text-slate-900">
+                            {{ package.public_title|default:package.display_title }}
+                        </h3>
+
+                        <p class="mt-2 text-sm text-slate-500 line-clamp-2">
+                            {{ package.description_short|default:"Описание пока не заполнено." }}
+                        </p>
+
+                        <div class="mt-4 text-xl font-bold text-slate-900">
+                            {{ package.final_price }}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+</div>
+{% endblock %}

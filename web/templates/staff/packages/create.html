@@ -1,0 +1,203 @@
+{% extends "staff/base.html" %}
+
+{% block title %}Создать пакет{% endblock %}
+
+{% block page_header %}
+    {% include "staff/packages/_page_header.html" with
+        breadcrumbs=breadcrumbs
+        title="Создать пакет"
+        subtitle="Создание нового пакета услуг для одной конкретной модификации автомобиля."
+        show_actions=False
+    %}
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+    {% csrf_token %}
+
+    <div class="xl:col-span-8 space-y-6">
+        {% if form.non_field_errors %}
+            <section class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {{ form.non_field_errors }}
+            </section>
+        {% endif %}
+
+        <!-- Основная информация -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900">Основная информация</h2>
+                <p class="mt-1 text-sm text-slate-500">
+                    Базовые поля пакета, статус и общая скидка пакета.
+                </p>
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label class="staff-label" for="{{ form.category.id_for_label }}">Категория</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.category.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label" for="{{ form.status.id_for_label }}">Статус</label>
+                    {{ form.status }}
+                    {% if form.status.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.status.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label" for="{{ form.name.id_for_label }}">Внутреннее название</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.name.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label" for="{{ form.public_title.id_for_label }}">Публичный заголовок</label>
+                    {{ form.public_title }}
+                    {% if form.public_title.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.public_title.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="staff-label" for="{{ form.package_discount_percent.id_for_label }}">
+                        Скидка пакета, %
+                    </label>
+                    {{ form.package_discount_percent }}
+                    <div class="staff-help">
+                        Slug будет сгенерирован автоматически при сохранении.
+                    </div>
+                    {% if form.package_discount_percent.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.package_discount_percent.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Тексты -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900">Тексты и описания</h2>
+                <p class="mt-1 text-sm text-slate-500">
+                    Короткое описание, внутреннее описание и текст для клиента.
+                </p>
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 gap-4">
+                <div>
+                    <label class="staff-label" for="{{ form.description_short.id_for_label }}">Короткое описание</label>
+                    {{ form.description_short }}
+                    {% if form.description_short.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.description_short.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label" for="{{ form.description.id_for_label }}">Внутреннее описание</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.description.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label" for="{{ form.description_public.id_for_label }}">Публичное описание</label>
+                    {{ form.description_public }}
+                    {% if form.description_public.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ form.description_public.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Выбор автомобиля -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900">Выбор автомобиля</h2>
+                <p class="mt-1 text-sm text-slate-500">
+                    На первом этапе используется прямой выбор modification. Потом можно заменить на иерархический selector.
+                </p>
+            </div>
+
+            <div class="mt-5">
+                <label class="staff-label" for="{{ form.modification.id_for_label }}">Модификация</label>
+                {{ form.modification }}
+                {% if form.modification.errors %}
+                    <div class="mt-1 text-sm text-red-600">{{ form.modification.errors }}</div>
+                {% endif %}
+                <div class="staff-help">
+                    Один активный пакет на одну комбинацию «категория + модификация».
+                </div>
+            </div>
+        </section>
+
+        <!-- Vehicle preview -->
+        {% if vehicle %}
+            {% include "staff/packages/_vehicle_card.html" with
+                vehicle=vehicle
+                card_title="Предпросмотр автомобиля"
+                card_subtitle="Так будет выглядеть привязка пакета к автомобилю после сохранения."
+            %}
+        {% endif %}
+
+        <!-- Promo -->
+        {% include "staff/packages/_promo_card.html" with
+            mode="form"
+            form=form
+            card_title="Promo"
+            card_subtitle="Если пакет участвует в акции, укажи бейдж, текст и период действия."
+        %}
+
+        <!-- Image -->
+        {% include "staff/packages/_image_card.html" with
+            mode="form"
+            image_form=image_form
+            card_title="Изображение"
+            card_subtitle="Главная картинка пакета. Состав пакета будет добавлен позже."
+        %}
+    </div>
+
+    <!-- Правая колонка -->
+    <div class="xl:col-span-4 space-y-6">
+        {% include "staff/packages/_price_summary.html" with
+            mode="empty"
+            card_title="Сводка цен"
+            card_subtitle="После создания пакета и добавления состава здесь появится расчёт."
+        %}
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-6">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900">Что будет создано</h2>
+                <p class="mt-1 text-sm text-slate-500">
+                    На этом шаге создаётся сам пакет и его главная картинка.
+                </p>
+            </div>
+
+            <div class="mt-5 space-y-3 text-sm text-slate-600">
+                <p>Категории состава и номенклатурные позиции удобнее добавлять уже после сохранения пакета.</p>
+                <p>После успешного сохранения произойдёт переход на страницу просмотра пакета.</p>
+                <p>Slug будет сгенерирован автоматически, если не задаётся моделью вручную.</p>
+            </div>
+
+            <div class="mt-5 space-y-2">
+                <button type="submit" name="action" value="save" class="staff-btn-primary w-full">
+                    Сохранить пакет
+                </button>
+
+                <button type="submit" name="action" value="save_open" class="staff-btn-secondary w-full">
+                    Сохранить и открыть
+                </button>
+
+                <a href="{% url 'staff:package_list' %}" class="staff-btn-secondary w-full">
+                    Отмена
+                </a>
+            </div>
+        </section>
+    </div>
+</form>
+{% endblock %}

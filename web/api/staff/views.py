@@ -1,15 +1,69 @@
 from __future__ import annotations
 
+from collections import defaultdict
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 # IMPORTANT:
 # Подставь правильный путь к моделям под своё приложение.
-from catalog.models import CarServicePackage
+from catalog.models import CarServicePackage, PackageItemCategory
 
-from .services import get_package_list_data, get_vehicle_label, money_to_kzt_string
+from .forms import StaffPackageCreateForm, StaffPackageImageForm
+from .services import get_package_list_data
+
+
+def build_vehicle_context(package: CarServicePackage) -> dict:
+    modification = getattr(package, "modification", None)
+    configuration = getattr(modification, "configuration", None) if modification else None
+    generation = getattr(configuration, "generation", None) if configuration else None
+    model = getattr(generation, "model", None) if generation else None
+    mark = getattr(model, "mark", None) if model else None
+
+    parts = []
+    if mark and getattr(mark, "name", None):
+        parts.append(mark.name)
+    if model and getattr(model, "name", None):
+        parts.append(model.name)
+    if generation and getattr(generation, "name", None):
+        parts.append(generation.name)
+    if configuration and getattr(configuration, "name", None):
+        parts.append(configuration.name)
+    if modification and getattr(modification, "name", None):
+        parts.append(modification.name)
+
+    return {
+        "mark": getattr(mark, "name", "—") if mark else "—",
+        "model": getattr(model, "name", "—") if model else "—",
+        "generation": getattr(generation, "name", "—") if generation else "—",
+        "configuration": getattr(configuration, "name", "—") if configuration else "—",
+        "modification": getattr(modification, "name", "—") if modification else "—",
+        "label": " / ".join(parts) if parts else "—",
+    }
+
+
+def build_grouped_items(package: CarServicePackage) -> list[dict]:
+    """
+    Группирует элементы пакета по локальным категориям.
+    """
+    grouped = []
+    active_categories = list(package.item_categories.filter(is_deleted=False, is_active=True).order_by("sort_order", "id"))
+
+    for category in active_categories:
+        items = list(
+            category.items
+            .filter(is_deleted=False, is_active=True)
+            .select_related("nomenclature_item")
+            .order_by("sort_order", "id")
+        )
+        grouped.append({
+            "category": category,
+            "items": items,
+        })
+
+    return grouped
 
 
 class StaffPackageListView(LoginRequiredMixin, View):
@@ -35,11 +89,47 @@ class StaffPackageListView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
+class StaffPackageCreateView(LoginRequiredMixin, View):
+    template_name = "staff/packages/create.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        form = StaffPackageCreateForm()
+        image_form = StaffPackageImageForm()
+
+        context = {
+            "form": form,
+            "image_form": image_form,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        form = StaffPackageCreateForm(request.POST)
+        image_form = StaffPackageImageForm(request.POST, request.FILES)
+
+        if form.is_valid() and image_form.is_valid():
+            package = form.save()
+
+            if image_form.cleaned_data.get("image"):
+                image = image_form.save(commit=False)
+                image.package = package
+                image.save()
+
+            action = request.POST.get("action") or "save"
+
+            if action == "save_open":
+                return redirect("staff:package_detail", package_id=package.id)
+
+            return redirect("staff:package_detail", package_id=package.id)
+
+        context = {
+            "form": form,
+            "image_form": image_form,
+        }
+        return render(request, self.template_name, context)
+
+
 class StaffPackageDetailView(LoginRequiredMixin, View):
-    """
-    Пока заглушка под будущую detail-страницу.
-    Route уже рабочий, поэтому список можно собирать сразу корректно.
-    """
+    template_name = "staff/packages/detail.html"
 
     def get(self, request: HttpRequest, package_id: int) -> HttpResponse:
         package = get_object_or_404(
@@ -56,35 +146,18 @@ class StaffPackageDetailView(LoginRequiredMixin, View):
             is_deleted=False,
         )
 
-        vehicle_label = get_vehicle_label(package)
-
-        return HttpResponse(
-            f"""
-            <html lang="ru">
-            <head>
-                <meta charset="utf-8">
-                <title>Пакет #{package.pk}</title>
-                <script src="https://cdn.tailwindcss.com"></script>
-            </head>
-            <body class="bg-slate-50 text-slate-900">
-                <div class="max-w-4xl mx-auto px-6 py-8">
-                    <a href="/staff/packages/" class="text-sm text-blue-600 hover:underline">← Назад к списку</a>
-                    <h1 class="mt-4 text-3xl font-bold">{package.display_title}</h1>
-                    <div class="mt-4 space-y-2 text-sm">
-                        <p><strong>ID:</strong> {package.pk}</p>
-                        <p><strong>Внутреннее имя:</strong> {package.name}</p>
-                        <p><strong>Slug:</strong> {package.slug}</p>
-                        <p><strong>Категория:</strong> {package.category.name}</p>
-                        <p><strong>Автомобиль:</strong> {vehicle_label}</p>
-                        <p><strong>Статус:</strong> {package.get_status_display()}</p>
-                    </div>
-                    <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-                        Это временная заглушка. Потом сюда можно вынести полноценную страницу
-                        /staff/packages/&lt;int:package_id&gt;/ со списком номенклатуры, ценами,
-                        промо-блоком, картинкой и историей изменений.
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
+        vehicle = build_vehicle_context(package)
+        item_categories = (
+            package.item_categories
+            .filter(is_deleted=False, is_active=True)
+            .order_by("sort_order", "id")
         )
+        grouped_items = build_grouped_items(package)
+
+        context = {
+            "package": package,
+            "vehicle": vehicle,
+            "item_categories": item_categories,
+            "grouped_items": grouped_items,
+        }
+        return render(request, self.template_name, context)

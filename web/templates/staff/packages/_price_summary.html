@@ -1,0 +1,55 @@
+<section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div>
+        <h2 class="text-lg font-semibold text-slate-900">
+            {{ card_title|default:"Сводка цен" }}
+        </h2>
+        {% if card_subtitle %}
+            <p class="mt-1 text-sm text-slate-500">
+                {{ card_subtitle }}
+            </p>
+        {% endif %}
+    </div>
+
+    {% if mode == "detail" %}
+        <div class="mt-5 space-y-3 text-sm">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-slate-500">Base price</span>
+                <span class="font-medium text-slate-900">{{ package.base_price }}</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-slate-500">Line discount amount</span>
+                <span class="font-medium text-red-600">- {{ package.line_discount_amount }}</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-slate-500">Subtotal after line discounts</span>
+                <span class="font-medium text-slate-900">{{ package.subtotal_after_line_discounts }}</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-slate-500">Package discount amount</span>
+                <span class="font-medium text-red-600">- {{ package.package_discount_amount }}</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-slate-500">Regular price</span>
+                <span class="font-medium text-slate-900">{{ package.regular_price }}</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-slate-500">Promo price</span>
+                <span class="font-medium text-slate-900">{{ package.promo_price }}</span>
+            </div>
+
+            <div class="border-t border-slate-200 pt-3 flex items-center justify-between gap-3">
+                <span class="font-semibold text-slate-700">Final price</span>
+                <span class="text-lg font-bold text-slate-900">{{ package.final_price }}</span>
+            </div>
+        </div>
+    {% else %}
+        <div class="mt-4 text-sm text-slate-500">
+            Расчёт цен появится после сохранения пакета и добавления состава.
+        </div>
+    {% endif %}
+</section>
