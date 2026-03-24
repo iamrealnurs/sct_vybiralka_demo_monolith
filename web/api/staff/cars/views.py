@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views import View
+from django.urls import NoReverseMatch, reverse
 
-from .services import get_staff_car_list_data
+from .services import get_staff_car_list_data, get_car_detail_data
 
 
 class StaffCarListView(LoginRequiredMixin, View):
@@ -63,3 +64,29 @@ class StaffCarListView(LoginRequiredMixin, View):
         query = request.GET.copy()
         query.pop("page", None)
         return query.urlencode()
+
+
+class StaffCarDetailView(LoginRequiredMixin, View):
+    template_name = "staff/cars/detail.html"
+
+    def get(self, request, source_id):
+        # Вызываем сервис. Если source_id неверный, get() внутри сервиса выкинет ошибку, 
+        # здесь можно добавить обработку try/except для 404
+        try:
+            data = get_car_detail_data(source_id)
+        except Modification.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Автомобиль не найден")
+            
+        context = {
+            **data,
+            "page_title": f"Детальная информация: {data['car'].name}",
+            "breadcrumbs": [
+                {"label": "Сотрудники", "url": reverse("staff:packages:package_list")},
+                {"label": "Автомобили", "url": reverse("staff:cars_staff:car_list")},
+                {"label": source_id, "url": None},
+            ],
+        }
+        return render(request, self.template_name, context)
+
+

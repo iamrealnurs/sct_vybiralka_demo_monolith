@@ -5,7 +5,7 @@ from django.db.models import Count, Q, QuerySet
 from django.core.paginator import Paginator, Page
 from django.http import QueryDict
 
-from cars.models import Modification, Mark, CarModel, Generation
+from cars.models import Modification, Mark, CarModel, Generation, ModificationOption, OptionCategory
 from catalog.models import CarServicePackage
 
 @dataclass(slots=True)
@@ -148,3 +148,46 @@ def build_car_detail_label(modification: Modification) -> str:
         parts.append(spec.get_powertrain_type_display())
         
     return " / ".join(parts)
+
+
+def get_car_detail_data(source_id: str) -> dict:
+    # 1. Получаем модификацию со всеми базовыми связями
+    car = Modification.objects.select_related(
+        'configuration',
+        'configuration__body_type',
+        'configuration__generation',
+        'configuration__generation__model',
+        'configuration__generation__model__mark',
+        'specification',
+        'raw_specification',
+    ).get(source_id=source_id)
+
+    # 2. Получаем пакеты услуг для этого авто
+    packages = car.service_packages.filter(is_deleted=False).select_related('category')
+
+    # 3. Получаем опции и группируем их по категориям
+    # Сначала берем все активные категории опций
+    categories = OptionCategory.objects.filter(is_active=True).order_by('sort_order')
+    
+    # Берем значения опций для этой машины
+    options_values = ModificationOption.objects.filter(
+        modification=car
+    ).select_related('option_definition', 'option_definition__category')
+
+    # Собираем структуру: Категория -> Список опций со значениями
+    grouped_options = []
+    for cat in categories:
+        cat_options = [opt for opt in options_values if opt.option_definition.category_id == cat.id]
+        if cat_options:
+            grouped_options.append({
+                'category': cat,
+                'items': cat_options
+            })
+
+    return {
+        'car': car,
+        'packages': packages,
+        'grouped_options': grouped_options,
+    }
+
+

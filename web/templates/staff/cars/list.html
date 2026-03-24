@@ -45,7 +45,7 @@
                 <span class="h-2 w-2 rounded-full bg-sky-500"></span>
                 Работа с данными
             </span>
-            <a href="{% url 'staff:cars:car_list' %}" class="staff-btn-secondary py-2">
+            <a href="{% url 'staff:cars_staff:car_list' %}" class="staff-btn-secondary py-2">
                 Сбросить всё
             </a>
         </div>
@@ -60,7 +60,6 @@
                 <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Справочник автомобилей</h1>
                 <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
                     Найдите нужную модификацию автомобиля, чтобы посмотреть связанные пакеты услуг и перейти к управлению ими. 
-                    Статистика ниже отображает данные с учетом примененных фильтров.
                 </p>
             </div>
 
@@ -73,13 +72,13 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase">Внутренний каталог</p>
-                        <p class="text-lg font-semibold text-slate-900">Поиск по моделям</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase">Статистика выборки</p>
+                        <p class="text-lg font-semibold text-slate-900">Текущие результаты</p>
                     </div>
                 </div>
                 <div class="mt-6 grid grid-cols-2 gap-4">
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <p class="text-xs font-medium text-slate-500 uppercase">В выборке</p>
+                        <p class="text-xs font-medium text-slate-500 uppercase">Всего авто</p>
                         <p class="text-xl font-bold text-slate-900">{{ kpi.total_count }}</p>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -89,25 +88,6 @@
                 </div>
             </div>
         </div>
-    </section>
-
-    <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="glass rounded-3xl border border-white/70 p-5 shadow-sm">
-            <p class="text-xs font-semibold uppercase text-slate-500">Всего модификаций</p>
-            <p class="mt-3 text-3xl font-bold text-slate-900">{{ kpi.total_count }}</p>
-        </article>
-        <article class="glass rounded-3xl border border-white/70 p-5 shadow-sm">
-            <p class="text-xs font-semibold uppercase text-slate-500">С пакетами</p>
-            <p class="mt-3 text-3xl font-bold text-emerald-600">{{ kpi.with_packages }}</p>
-        </article>
-        <article class="glass rounded-3xl border border-white/70 p-5 shadow-sm">
-            <p class="text-xs font-semibold uppercase text-slate-500">Без пакетов</p>
-            <p class="mt-3 text-3xl font-bold text-amber-600">{{ kpi.without_packages }}</p>
-        </article>
-        <article class="glass rounded-3xl border border-white/70 p-5 shadow-sm">
-            <p class="text-xs font-semibold uppercase text-slate-500">Опубликовано пакетов</p>
-            <p class="mt-3 text-3xl font-bold text-sky-600">{{ kpi.published_packages_total }}</p>
-        </article>
     </section>
 
     <section class="glass mb-6 rounded-3xl border border-white/70 shadow-sm">
@@ -132,7 +112,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="staff-label">Модель (ID или название)</label>
+                        <label class="staff-label">Модель</label>
                         <input type="text" name="model" value="{{ filters.model }}" data-filter="model" class="staff-input" placeholder="Напр: Camry">
                     </div>
                     <div>
@@ -146,7 +126,7 @@
                     </div>
                     <div>
                         <label class="staff-label">Поиск</label>
-                        <input type="text" name="q" value="{{ filters.q }}" data-filter="search" class="staff-input" placeholder="ID, код двигателя...">
+                        <input type="text" name="q" value="{{ filters.q }}" data-filter="search" class="staff-input" placeholder="SID, код двигателя...">
                     </div>
                 </div>
 
@@ -170,21 +150,17 @@
                             <option value="ALL_WHEEL" {% if filters.drive_type == "ALL_WHEEL" %}selected{% endif %}>Полный (AWD)</option>
                         </select>
                     </div>
+                    <div class="flex items-end pb-1">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="has_packages" class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                   {% if filters.has_packages %}checked{% endif %} onchange="this.form.submit()">
+                            <span class="ml-3 text-sm font-medium text-slate-700">Только с пакетами</span>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="flex items-center gap-2 mt-4">
-    <input type="checkbox" 
-           name="has_packages" 
-           id="has_packages" 
-           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-           {% if filters.has_packages %}checked{% endif %}
-           onchange="this.form.submit()"> <label for="has_packages" class="text-sm font-medium text-slate-700 cursor-pointer">
-        Только с пакетами услуг
-    </label>
-</div>
-
                 <div class="flex items-center justify-between gap-4 border-t border-slate-100 pt-5">
-                    <button type="submit" class="staff-btn-primary px-8">Применить фильтры</button>
+                    <button type="submit" class="staff-btn-primary px-8 text-sm">Применить фильтры</button>
                     <div id="activeFilters" class="flex flex-wrap gap-2"></div>
                 </div>
             </form>
@@ -196,45 +172,44 @@
             <table class="w-full border-separate border-spacing-0 text-sm">
                 <thead>
                     <tr class="bg-slate-50/50">
-                        <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">ID</th>
+                        <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">ID / SID</th>
                         <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">Автомобиль</th>
                         <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">Модификация</th>
-                        <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">Двигатель</th>
-                        <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">КПП / Привод</th>
+                        <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">Тех. данные</th>
                         <th class="border-b border-slate-200 p-4 text-left font-semibold text-slate-500 uppercase tracking-wider">Пакеты</th>
-                        <th class="border-b border-slate-200 p-4 text-right font-semibold text-slate-500 uppercase tracking-wider">Действие</th>
+                        <th class="border-b border-slate-200 p-4 text-right font-semibold text-slate-500 uppercase tracking-wider">Действия</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white">
                     {% for car in page_obj %}
                     <tr class="table-hover-row transition">
-                        <td class="border-b border-slate-100 p-4 text-slate-500">#{{ car.id }}</td>
+                        <td class="border-b border-slate-100 p-4">
+                            <div class="text-slate-900 font-medium">#{{ car.id }}</div>
+                            <div class="text-[10px] text-slate-400 font-mono mt-1">{{ car.source_id }}</div>
+                        </td>
                         <td class="border-b border-slate-100 p-4">
                             <div class="font-bold text-slate-900">{{ car.configuration.generation.model.mark.name }}</div>
-                            <div class="text-slate-500">{{ car.configuration.generation.model.name }} ({{ car.configuration.generation.name }})</div>
+                            <div class="text-xs text-slate-500">{{ car.configuration.generation.model.name }}</div>
                         </td>
                         <td class="border-b border-slate-100 p-4">
                             <div class="font-semibold text-slate-800">{{ car.name }}</div>
-                            <div class="text-xs text-slate-400 mt-1">SID: {{ car.source_id }}</div>
+                            <div class="text-[11px] text-slate-400 italic mt-0.5">{{ car.configuration.name }}</div>
                         </td>
                         <td class="border-b border-slate-100 p-4">
-                            {% if car.specification %}
-                                <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                                    {{ car.specification.get_powertrain_type_display|default:"—" }}
-                                </span>
-                                <div class="mt-1 text-xs text-slate-500">{{ car.specification.horse_power_hp|default:"0" }} л.с.</div>
-                            {% else %}
-                                <span class="text-slate-400">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="border-b border-slate-100 p-4">
-                            <div class="flex gap-2">
-                                <span class="rounded bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-100">
-                                    {{ car.specification.get_transmission_type_display|default:"—" }}
-                                </span>
-                                <span class="rounded bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 border border-violet-100">
-                                    {{ car.specification.get_drive_type_display|default:"—" }}
-                                </span>
+                            <div class="flex flex-wrap gap-1.5">
+                                {% if car.specification %}
+                                    <span class="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-600">
+                                        {{ car.specification.get_powertrain_type_display|default:"—" }}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded bg-sky-50 text-[10px] font-bold text-sky-700 border border-sky-100">
+                                        {{ car.specification.get_transmission_type_display|default:"—" }}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded bg-violet-50 text-[10px] font-bold text-violet-700 border border-violet-100">
+                                        {{ car.specification.get_drive_type_display|default:"—" }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-slate-300">—</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td class="border-b border-slate-100 p-4">
@@ -244,13 +219,22 @@
                             </div>
                         </td>
                         <td class="border-b border-slate-100 p-4 text-right">
-                            <a href="#" class="staff-btn-secondary text-xs py-1.5 px-4">Открыть</a>
+                            <div class="flex justify-end items-center gap-2">
+                                <a href="{% url 'staff:cars_staff:car_detail' car.source_id %}" 
+                                   class="inline-flex items-center px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm">
+                                    Авто
+                                </a>
+                                <a href="{% url 'staff:packages:package_list' %}?q={{ car.source_id }}" 
+                                   class="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800 transition shadow-sm">
+                                    Пакеты
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="p-12 text-center text-slate-500">
-                            Ничего не найдено. Попробуйте сбросить фильтры.
+                        <td colspan="6" class="p-12 text-center text-slate-500">
+                            Ничего не найдено. Попробуйте изменить фильтры.
                         </td>
                     </tr>
                     {% endfor %}
@@ -292,30 +276,28 @@
         const activeFiltersContainer = document.getElementById('activeFilters');
         const filtersForm = document.getElementById('filtersForm');
 
-        // Переключение доп. фильтров
         toggleAdvancedBtn.addEventListener('click', () => {
             advancedFilters.classList.toggle('hidden');
             toggleAdvancedBtn.textContent = advancedFilters.classList.contains('hidden') ? 'Доп. параметры' : 'Скрыть доп. параметры';
         });
 
-        // Функция для отрисовки чипсов (активных фильтров)
         function renderActiveChips() {
             activeFiltersContainer.innerHTML = '';
             const formData = new FormData(filtersForm);
             
             for (let [key, value] of formData.entries()) {
-                if (value && key !== 'page') {
+                if (value && key !== 'page' && value !== 'on') {
                     const chip = document.createElement('div');
                     chip.className = 'multi-chip';
                     chip.innerHTML = `
-                        <span>${key}: ${value}</span>
-                        <button type="button" class="text-blue-400 hover:text-blue-600" data-clear="${key}">×</button>
+                        <span class="text-[11px] opacity-70 uppercase mr-1">${key}:</span>
+                        <span>${value}</span>
+                        <button type="button" class="ml-1 text-blue-400 hover:text-blue-600" data-clear="${key}">×</button>
                     `;
                     activeFiltersContainer.appendChild(chip);
                 }
             }
 
-            // Навешиваем событие удаления на крестик в чипсе
             activeFiltersContainer.querySelectorAll('[data-clear]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const fieldName = btn.dataset.clear;
