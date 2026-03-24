@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.core.paginator import Paginator, Page
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Q, QuerySet,  Value, CharField
+from django.db.models.functions import Concat, Coalesce, Cast
 from django.http import QueryDict
 
 from cars.models import (
@@ -117,11 +118,36 @@ def get_staff_car_list_data(params: QueryDict) -> StaffCarListResult:
         "models": list(CarModel.objects.filter(
             generations__configurations__modifications__in=qs
         ).distinct().order_by("name").values("id", "name", "mark_id")),
-        
+
+
+
         "generations": list(Generation.objects.filter(
-            configurations__modifications__in=qs
-        ).distinct().order_by("year_from").values("id", "name", "year_from", "year_to", "model_id")),
-        
+                    configurations__modifications__in=qs
+                ).distinct().order_by("year_from").annotate(
+                    # Создаем строку формата "Имя (2015-2020)" или просто "2015-2020"
+                    annotated_display_name=Concat(
+                        # Берем имя, если его нет — пустая строка
+                        Coalesce('name', Value(''), output_field=CharField()),
+                        # Добавляем пробел и скобку, только если нам есть что писать в годах
+                        Value(' ('),
+                        Coalesce(Cast('year_from', CharField()), Value('?')),
+                        Value('-'),
+                        Coalesce(Cast('year_to', CharField()), Value('?')),
+                        Value(')'),
+                        output_field=CharField()
+                    )
+                ).values(
+                    "id", 
+                    "name", 
+                    "year_from", 
+                    "year_to", 
+                    "model_id", 
+                    "annotated_display_name"
+        )),
+
+
+
+
         "configurations": list(Configuration.objects.filter(
             modifications__in=qs
         ).distinct().order_by("name").values("id", "name", "generation_id")),

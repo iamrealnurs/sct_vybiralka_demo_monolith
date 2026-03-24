@@ -502,31 +502,49 @@
 
 
         function fillSelect(select, options, selectedValue, placeholder) {
-            if (!select) return;
-            const normVal = normalizeOptionValue(selectedValue);
-            const rows = Array.isArray(options) ? options : [];
-            select.innerHTML = `<option value="">${placeholder}</option>`;
+                if (!select) return;
 
-            rows.forEach((opt) => {
-                // Если opt это строка (как для двигателя), используем её саму. 
-                // Если объект (как для марки), ищем ID или значение.
-                let val, lbl;
+                const normVal = normalizeOptionValue(selectedValue);
+                const rows = Array.isArray(options) ? options : [];
                 
-                if (typeof opt === 'string') {
-                    val = opt;
-                    lbl = opt;
+                select.innerHTML = `<option value="">${placeholder}</option>`;
+
+                rows.forEach((opt) => {
+                    let val, lbl;
+                    
+                    if (typeof opt === 'string') {
+                        val = opt;
+                        lbl = opt;
+                    } else {
+                        val = normalizeOptionValue(
+                            opt.id ?? opt.value ?? opt.powertrain_type ?? opt.drive_type ?? opt.transmission_type
+                        );
+                        
+                        // ЖЕСТКИЙ ПРИОРИТЕТ:
+                        // Если это Поколение, у него БУДЕТ свойство annotated_display_name.
+                        // Мы проверяем его наличие в объекте первым делом.
+                        if ('annotated_display_name' in opt && opt.annotated_display_name) {
+                            lbl = opt.annotated_display_name;
+                        } else {
+                            lbl = opt.name || opt.label || opt.value || opt.code || val;
+                        }
+                    }
+                    
+                    const isSelected = String(val) === String(normVal) ? " selected" : "";
+                    select.insertAdjacentHTML(
+                        "beforeend", 
+                        `<option value="${escapeHtml(val)}"${isSelected}>${escapeHtml(lbl)}</option>`
+                    );
+                });
+
+                if (select === markSelect) {
+                    select.disabled = false;
                 } else {
-                    val = normalizeOptionValue(opt.id ?? opt.value ?? opt.powertrain_type ?? opt.drive_type ?? opt.transmission_type);
-                    lbl = String(opt.name ?? opt.label ?? opt.value ?? opt.code ?? val);
+                    select.disabled = (rows.length === 0);
                 }
-                
-                const sel = val === normVal ? " selected" : "";
-                select.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(val)}"${sel}>${escapeHtml(lbl)}</option>`);
-            });
-            select.disabled = (rows.length === 0 && select !== markSelect);
-        }
+            }
 
-
+        
         
         function renderResults(results) {
             const rows = Array.isArray(results) ? results : [];
