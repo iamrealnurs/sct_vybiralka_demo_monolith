@@ -12,6 +12,7 @@ from django.urls import NoReverseMatch, reverse
 from django.views import View
 
 from catalog.models import CarServicePackage
+from cars.models import Mark
 
 from .forms import (
     StaffPackageCreateForm,
@@ -370,6 +371,7 @@ class StaffPackageCreateView(LoginRequiredMixin, View):
         return {
             "form": form,
             "image_form": image_form,
+            "marks": Mark.objects.all().order_by("name"), # Добавляем марки в контекст
             "vehicle_selector": vehicle_selector,
             "vehicle_selector_api_url": vehicle_selector["api_url"],
             "vehicle_selector_mode": vehicle_selector["mode"],
@@ -384,7 +386,9 @@ class StaffPackageCreateView(LoginRequiredMixin, View):
                 {"label": "Packages", "url": reverse("staff:packages:package_list")},
                 {"label": "Create", "url": None},
             ],
-        }
+        }    
+
+
 
     def get(self, request: HttpRequest) -> HttpResponse:
         form = StaffPackageCreateForm()

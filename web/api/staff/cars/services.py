@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from django.db.models import Count, Q, QuerySet
+from typing import Any
+
 from django.core.paginator import Paginator, Page
+from django.db.models import Count, Q, QuerySet
 from django.http import QueryDict
 
-from cars.models import Modification, Mark, CarModel, Generation, ModificationOption, OptionCategory
+from cars.models import (
+    Modification, Mark, CarModel, Generation, 
+    ModificationOption, OptionCategory, ModificationSpecification, Configuration
+)
 from catalog.models import CarServicePackage
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass(slots=True)
 class StaffCarListResult:
@@ -14,25 +23,42 @@ class StaffCarListResult:
     page_obj: Page
     kpi: dict[str, int]
     marks: QuerySet[Mark]
-    filters: dict[str, any]
+    filters: dict[str, Any]
+    # Опции для динамических фильтров (зависимых списков)
+    filter_options: dict[str, list]
 
 
 def get_staff_car_list_data(params: QueryDict) -> StaffCarListResult:
     """
     Основная бизнес-логика получения списка автомобилей для сотрудников.
-    Включает фильтрацию, расчет KPI и пагинацию.
+    Включает сложную фильтрацию, расчет зависимых опций фильтра, KPI и пагинацию.
     """
     
-    # 1. Формируем базовый QuerySet со всеми оптимизациями
-    # Мы используем select_related для всей иерархии и спецификаций
+    # 1. Сбор параметров из QueryDict
+    mark_id = params.get('mark', '')
+    model_id = params.get('model', '')
+    
+    # Обработка списков для множественного выбора (поддержка разных имен ключей)
+    generation_ids = params.getlist('generations') or params.getlist('generation')
+    configuration_ids = params.getlist('configurations') or params.getlist('configuration')
+    engine_types = params.getlist('engine_types') or params.getlist('engine_type')
+    drive_types = params.getlist('drive_types') or params.getlist('drive_type')
+    transmissions = params.getlist('transmissions') or params.getlist('transmission')
+    
+    q = params.get('q', '').strip()
+    has_packages = params.get('has_packages') == 'on' or params.get('has_packages') == '1'
+    body_type_query = params.get('body_type', '')
+
+    # 2. Формируем базовый QuerySet со всеми оптимизациями
     qs = Modification.objects.select_related(
         'configuration',
+        'configuration__body_type',
         'configuration__generation',
         'configuration__generation__model',
         'configuration__generation__model__mark',
         'specification',
     ).annotate(
-        # Считаем общее кол-во пакетов для этой модификации
+        # Считаем общее кол-во пакетов
         total_pkgs=Count(
             'service_packages', 
             filter=Q(service_packages__is_deleted=False), 
@@ -46,94 +72,124 @@ def get_staff_car_list_data(params: QueryDict) -> StaffCarListResult:
         )
     )
 
-    # 2. Обработка фильтров из GET-параметров
-    # Собираем примененные фильтры для возврата в шаблон
-    applied_filters = {
-        'mark': params.get('mark', ''),
-        'model': params.get('model', ''),
-        'generation': params.get('generation', ''),
-        'configuration': params.get('configuration', ''),
-        'body_type': params.get('body_type', ''),
-        'transmission': params.get('transmission', ''),
-        'engine_type': params.get('engine_type', ''),
-        'drive_type': params.get('drive_type', ''),
-        'has_packages': params.get('has_packages') == 'on',
-        'q': params.get('q', '').strip(),
-    }
+    # 3. Применение фильтрации
+    if mark_id:
+        qs = qs.filter(configuration__generation__model__mark_id=mark_id)
 
-    if applied_filters['mark']:
-        qs = qs.filter(configuration__generation__model__mark_id=applied_filters['mark'])
+    if model_id:
+        qs = qs.filter(configuration__generation__model_id=model_id)
 
-    if applied_filters['model']:
-        qs = qs.filter(configuration__generation__model_id=applied_filters['model'])
+    if generation_ids:
+        qs = qs.filter(configuration__generation_id__in=generation_ids)
 
-    if applied_filters['generation']:
-        qs = qs.filter(configuration__generation_id=applied_filters['generation'])
+    if configuration_ids:
+        qs = qs.filter(configuration_id__in=configuration_ids)
 
-    if applied_filters['configuration']:
-        qs = qs.filter(configuration_id=applied_filters['configuration'])
+    if body_type_query:
+        qs = qs.filter(configuration__body_type__name__icontains=body_type_query)
 
-    if applied_filters['body_type']:
-        # Поиск по коду или названию из связанной модели BodyType через Configuration
-        qs = qs.filter(configuration__body_type__name__icontains=applied_filters['body_type'])
+    if transmissions:
+        qs = qs.filter(specification__transmission_type__in=transmissions)
 
-    if applied_filters['transmission']:
-        qs = qs.filter(specification__transmission_type=applied_filters['transmission'])
+    if engine_types:
+        qs = qs.filter(specification__powertrain_type__in=engine_types)
 
-    if applied_filters['engine_type']:
-        qs = qs.filter(specification__powertrain_type=applied_filters['engine_type'])
+    if drive_types:
+        qs = qs.filter(specification__drive_type__in=drive_types)
 
-    if applied_filters['has_packages']:
+    if has_packages:
         qs = qs.filter(total_pkgs__gt=0)
 
-    if applied_filters['drive_type']:
-        qs = qs.filter(specification__drive_type=applied_filters['drive_type'])
-
-    if applied_filters['q']:
-        query = applied_filters['q']
+    if q:
         qs = qs.filter(
-            Q(name__icontains=query) |
-            Q(source_id__icontains=query) |
-            Q(configuration__generation__model__name__icontains=query) |
-            Q(specification__engine_code__icontains=query)
+            Q(name__icontains=q) |
+            Q(source_id__icontains=q) |
+            Q(configuration__generation__model__name__icontains=q) |
+            Q(specification__engine_code__icontains=q)
         )
 
-    # 3. Подсчет KPI (статистика по текущей выборке)
-    # Выполняем агрегацию по отфильтрованному списку
+    # 4. Формирование зависимых опций для фильтров (для динамического UI)
+    filter_options = {
+        # Марки берем все доступные в базе, чтобы фильтр не был пустым
+        "marks": list(Mark.objects.all().distinct().order_by("name").values("id", "name")),
+        
+        # Модели и остальное оставляем зависимыми от отфильтрованного QuerySet (qs)
+        "models": list(CarModel.objects.filter(
+            generations__configurations__modifications__in=qs
+        ).distinct().order_by("name").values("id", "name", "mark_id")),
+        
+        "generations": list(Generation.objects.filter(
+            configurations__modifications__in=qs
+        ).distinct().order_by("year_from").values("id", "name", "year_from", "year_to", "model_id")),
+        
+        "configurations": list(Configuration.objects.filter(
+            modifications__in=qs
+        ).distinct().order_by("name").values("id", "name", "generation_id")),
+        
+        "engine_types": list(ModificationSpecification.objects.filter(
+            modification__in=qs
+        ).exclude(powertrain_type="").values_list("powertrain_type", flat=True).distinct().order_by("powertrain_type")),
+        
+        "drive_types": list(ModificationSpecification.objects.filter(
+            modification__in=qs
+        ).exclude(drive_type="").values_list("drive_type", flat=True).distinct().order_by("drive_type")),
+        
+        "transmissions": list(ModificationSpecification.objects.filter(
+            modification__in=qs
+        ).exclude(transmission_type="").values_list("transmission_type", flat=True).distinct().order_by("transmission_type")),
+    }
+
+    # 5. Подсчет KPI
     kpi = {
         'total_count': qs.count(),
         'with_packages': qs.filter(total_pkgs__gt=0).count(),
         'without_packages': qs.filter(total_pkgs=0).count(),
-        'published_packages_total': sum(qs.values_list('pub_pkgs', flat=True)) # Сумма всех опубликованных
+        'published_packages_total': sum(qs.values_list('pub_pkgs', flat=True))
     }
 
-    # 4. Сортировка и пагинация
-    # Сортируем по иерархии: Марка -> Модель -> Имя модификации
+    # 6. Сортировка и пагинация
     qs = qs.order_by(
         'configuration__generation__model__mark__name', 
         'configuration__generation__model__name', 
         'name'
     )
 
-    paginator = Paginator(qs, 25)  # По 25 машин на страницу
+    paginator = Paginator(qs, 25)
     page_number = params.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # 5. Получаем список марок для выпадающего списка фильтра
+    # 7. Список всех марок для начальной инициализации фильтров
     marks = Mark.objects.all().order_by('name')
+
+    # Собираем примененные фильтры для возврата в шаблон
+    applied_filters = {
+        'mark': mark_id,
+        'model': model_id,
+        'generations': generation_ids,
+        'configurations': configuration_ids,
+        'body_type': body_type_query,
+        'transmission': params.get('transmission', ''),  # берем single для формы если нужно
+        'transmissions': transmissions,
+        'engine_type': params.get('engine_type', ''),
+        'engine_types': engine_types,
+        'drive_type': params.get('drive_type', ''),
+        'drive_types': drive_types,
+        'has_packages': has_packages,
+        'q': q,
+    }
 
     return StaffCarListResult(
         page_obj=page_obj,
         kpi=kpi,
         marks=marks,
-        filters=applied_filters
+        filters=applied_filters,
+        filter_options=filter_options
     )
 
 
 def build_car_detail_label(modification: Modification) -> str:
     """
-    Вспомогательный метод для формирования красивой строки описания двигателя/привода
-    (Используется в ячейке таблицы 'Модификация')
+    Вспомогательный метод для формирования красивой строки описания двигателя/привода.
     """
     spec = getattr(modification, 'specification', None)
     if not spec:
@@ -151,7 +207,10 @@ def build_car_detail_label(modification: Modification) -> str:
 
 
 def get_car_detail_data(source_id: str) -> dict:
-    # 1. Получаем модификацию со всеми базовыми связями
+    """
+    Получение полной детальной информации об автомобиле (модификации).
+    """
+    # 1. Получаем модификацию
     car = Modification.objects.select_related(
         'configuration',
         'configuration__body_type',
@@ -162,19 +221,16 @@ def get_car_detail_data(source_id: str) -> dict:
         'raw_specification',
     ).get(source_id=source_id)
 
-    # 2. Получаем пакеты услуг для этого авто
+    # 2. Получаем пакеты услуг
     packages = car.service_packages.filter(is_deleted=False).select_related('category')
 
-    # 3. Получаем опции и группируем их по категориям
-    # Сначала берем все активные категории опций
+    # 3. Группировка опций по категориям
     categories = OptionCategory.objects.filter(is_active=True).order_by('sort_order')
     
-    # Берем значения опций для этой машины
     options_values = ModificationOption.objects.filter(
         modification=car
     ).select_related('option_definition', 'option_definition__category')
 
-    # Собираем структуру: Категория -> Список опций со значениями
     grouped_options = []
     for cat in categories:
         cat_options = [opt for opt in options_values if opt.option_definition.category_id == cat.id]
@@ -189,5 +245,3 @@ def get_car_detail_data(source_id: str) -> dict:
         'packages': packages,
         'grouped_options': grouped_options,
     }
-
-

@@ -1,65 +1,114 @@
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render, get_object_or_404
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.views import View
 from django.urls import NoReverseMatch, reverse
 
+# Импортируем модель Modification для обработки исключений
+from cars.models import Modification
 from .services import get_staff_car_list_data, get_car_detail_data
+
+logger = logging.getLogger(__name__)
 
 
 class StaffCarListView(LoginRequiredMixin, View):
     """
-    Представление для отображения справочника автомобилей (модификаций)
-    в интерфейсе сотрудников.
+    Унифицированное представление для работы со справочником автомобилей.
+    Поддерживает:
+    1. Обычный GET-запрос: возвращает полную HTML-страницу.
+    2. AJAX/JSON запрос: возвращает отфильтрованные данные и динамические опции фильтров.
     """
     template_name = "staff/cars/list.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        """
-        Метод GET: 
-        1. Извлекает параметры фильтрации из строки запроса (request.GET).
-        2. Вызывает сервисный слой для получения отфильтрованных данных и KPI.
-        3. Рендерит страницу со списком автомобилей.
-        """
-        
-        # Получаем данные из сервисного слоя
-        # Мы передаем весь словарь параметров (марка, модель, поиск, страница и т.д.)
+        # 1. Вызываем единый сервисный слой для получения данных
+        # Теперь сервис возвращает не только список и KPI, но и filter_options
         result = get_staff_car_list_data(request.GET)
 
+        # 2. Проверяем, является ли запрос AJAX-запросом или требует JSON-формата
+        # Это позволяет использовать один и тот же URL для страницы и для API фильтрации
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        is_json_requested = request.GET.get('format') == 'json'
+
+        if is_ajax or is_json_requested:
+            return self._render_json_response(result)
+
+        # 3. Стандартный рендеринг HTML-страницы
         context = {
             "page_title": "Справочник автомобилей",
-            
-            # Объект пагинации (содержит список машин для текущей страницы)
             "page_obj": result.page_obj,
-            
-            # Статистика для KPI карточек (всего, с пакетами и т.д.)
             "kpi": result.kpi,
-            
-            # Список всех марок для наполнения выпадающего списка в фильтре
             "marks": result.marks,
-            
-            # Примененные фильтры, чтобы вернуть их в поля формы (value="{{ filters.q }}")
             "filters": result.filters,
-            
-            # Хлебные крошки для навигации
+            "filter_options": result.filter_options,  # Передаем для начальной инициализации JS
             "breadcrumbs": [
-                {"label": "Сотрудники", "url": None},
+                {"label": "Сотрудники", "url": reverse("staff:packages:package_list")},
                 {"label": "Автомобили", "url": None},
             ],
-            
-            # Сохраняем строку запроса без параметра 'page' для корректной работы ссылок пагинации
             "preserved_query": self._get_preserved_query(request),
         }
-
         return render(request, self.template_name, context)
+
+    def _render_json_response(self, result: Any) -> JsonResponse:
+        """
+        Формирует JSON-ответ для динамического обновления интерфейса.
+        Включает в себя сериализованные объекты автомобилей и обновленные списки опций.
+        """
+        return JsonResponse({
+            "ok": True,
+            "count": result.kpi.get('total_count', 0),
+            "results": [self._serialize_car(car) for car in result.page_obj],
+            "options": result.filter_options,
+            "kpi": result.kpi,
+            "applied_filters": result.filters,
+        })
+
+    def _serialize_car(self, car: Modification) -> dict[str, Any]:
+        """
+        Глубокая сериализация объекта модификации для отображения в JS-компонентах.
+        """
+        spec = getattr(car, 'specification', None)
+        
+        return {
+            "id": car.id,
+            "source_id": car.source_id,
+            "name": car.name,
+            "group_name": car.group_name,
+            "mark": {
+                "id": car.configuration.generation.model.mark.id,
+                "name": car.configuration.generation.model.mark.name,
+            },
+            "model": {
+                "id": car.configuration.generation.model.id,
+                "name": car.configuration.generation.model.name,
+            },
+            "generation": {
+                "id": car.configuration.generation.id,
+                "name": car.configuration.generation.name,
+            },
+            "configuration": {
+                "id": car.configuration.id,
+                "name": car.configuration.name,
+            },
+            "total_pkgs": getattr(car, 'total_pkgs', 0),
+            "pub_pkgs": getattr(car, 'pub_pkgs', 0),
+            "specification": {
+                "powertrain_type": spec.get_powertrain_type_display() if spec else "—",
+                "transmission_type": spec.get_transmission_type_display() if spec else "—",
+                "drive_type": spec.get_drive_type_display() if spec else "—",
+                "horse_power": spec.horse_power_hp if spec else None,
+                "displacement": spec.displacement_cc if spec else None,
+            }
+        }
 
     def _get_preserved_query(self, request: HttpRequest) -> str:
         """
-        Вспомогательный метод: берет текущие GET-параметры и исключает 'page'.
-        Это нужно, чтобы при переходе по страницам фильтры не сбрасывались.
-        Пример: если сейчас ?mark=Toyota&page=2, вернет 'mark=Toyota'
+        Копирует GET-параметры, исключая 'page', для сохранения фильтрации при пагинации.
         """
         query = request.GET.copy()
         query.pop("page", None)
@@ -67,20 +116,24 @@ class StaffCarListView(LoginRequiredMixin, View):
 
 
 class StaffCarDetailView(LoginRequiredMixin, View):
+    """
+    Детальное представление модификации автомобиля.
+    Использует расширенный сервис для получения характеристик и сгруппированных опций.
+    """
     template_name = "staff/cars/detail.html"
 
-    def get(self, request, source_id):
-        # Вызываем сервис. Если source_id неверный, get() внутри сервиса выкинет ошибку, 
-        # здесь можно добавить обработку try/except для 404
+    def get(self, request: HttpRequest, source_id: str) -> HttpResponse:
         try:
+            # Получаем данные (car, packages, grouped_options) через сервис
             data = get_car_detail_data(source_id)
         except Modification.DoesNotExist:
             from django.http import Http404
+            logger.warning(f"StaffCarDetailView: Modification with source_id {source_id} not found.")
             raise Http404("Автомобиль не найден")
             
         context = {
             **data,
-            "page_title": f"Детальная информация: {data['car'].name}",
+            "page_title": f"Детальная информация: {data['car'].mark.name} {data['car'].name}",
             "breadcrumbs": [
                 {"label": "Сотрудники", "url": reverse("staff:packages:package_list")},
                 {"label": "Автомобили", "url": reverse("staff:cars_staff:car_list")},
@@ -88,5 +141,4 @@ class StaffCarDetailView(LoginRequiredMixin, View):
             ],
         }
         return render(request, self.template_name, context)
-
 

@@ -8,10 +8,13 @@ file_paths = [
     "cars/models.py",
     "catalog/models.py",
     "client/models.py",
-    "api/staff/forms.py",
-    "api/staff/services.py",
-    "api/staff/urls.py",
-    "api/staff/views.py",
+    "api/staff/packages/forms.py",
+    "api/staff/packages/services.py",
+    "api/staff/packages/urls.py",
+    "api/staff/packages/views.py",
+    "api/staff/cars/services.py",
+    "api/staff/cars/urls.py",
+    "api/staff/cars/views.py",
     "templates/staff/base.html",
     "templates/staff/packages/create.html",
     "templates/staff/packages/detail.html",
@@ -22,47 +25,39 @@ file_paths = [
     "templates/staff/packages/_price_summary.html",
     "templates/staff/packages/_promo_card.html",
     "templates/staff/packages/_vehicle_card.html",
-    "cars/urls.py",
-    "cars/views.py",
-    "templates/cars/filter.html"
+    "templates/staff/cars/list.html",
+    "templates/staff/cars/detail.html",
 ]
 
-# Путь к файлу, который мы создаем
 output_file = "datagen_data/prompts/api/prompt_api.txt"
-
 os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
 with open(output_file, "w", encoding="utf-8") as f_out:
-    for file_path in file_paths:
-        f_out.write(f"Вот мой код из файла {file_path}\n" + "\n\n")
+    for i, file_path in enumerate(file_paths):
+        # Если это не первый элемент, добавляем 3 переноса (\n\n\n), 
+        # что дает ровно 2 пустые строки между блоками.
+        prefix = "\n\n" if i > 0 else ""
+        f_out.write(f"{prefix}Вот мой код из файла {file_path}\n\n")
+        
         try:
             with open(file_path, "r", encoding="utf-8") as f_in:
-                f_out.write(f_in.read() + "\n\n")
+                # .strip() убирает лишние "хвосты" в конце файлов
+                f_out.write(f_in.read().strip() + "\n")
         except FileNotFoundError:
-            f_out.write("    (Файл не найден)\n\n")
+            f_out.write("(Файл не найден)\n")
 
-    # Получаем список URL из Django
+    # Секция с URL
     try:
         result = subprocess.run(["python", "manage.py", "show_urls"], capture_output=True, text=True)
-        urls = result.stdout.split("\n")
+        # Фильтруем пустые строки и нужные эндпоинты
+        urls = [url.strip() for url in result.stdout.split("\n") if url.startswith("/api/v1/")]
         
-        f_out.write("Вот мой код из фрагмента выдачи из терминала на команду python manage.py show_urls\n\n")
-        for url in urls:
-            if url.startswith("/api/v1/"):
-                f_out.write(url + "\n")
+        if urls:
+            f_out.write("\n\n\nВот мой код из фрагмента выдачи из терминала на команду python manage.py show_urls\n\n")
+            f_out.write("\n".join(urls) + "\n")
+            
     except Exception as e:
-        f_out.write(f"Ошибка при выполнении команды: {e}\n")
+        # Теперь кавычка на месте
+        f_out.write(f"\n\n\nОшибка при выполнении команды: {e}\n")
 
 print(f"Файл {output_file} успешно создан!")
-
-
-
-
-
-
-
-
-
-
-
-

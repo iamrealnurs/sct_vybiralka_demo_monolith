@@ -111,7 +111,7 @@
         <section
             class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
             id="vehicle-selector-root"
-            data-api-url="{{ vehicle_selector_api_url }}"
+            data-api-url="{% url 'staff:cars_staff:car_list' %}"
             data-mode="{{ vehicle_selector_mode }}"
             data-initial-state='{{ vehicle_selector_initial_state_json|escapejs }}'
             data-selected-modification-id='{{ vehicle_selector_selected_modification_id_json|escapejs }}'
@@ -142,6 +142,11 @@
                         class="staff-select"
                     >
                         <option value="">Выбери марку</option>
+                        {% for m in marks %}
+                            <option value="{{ m.id }}" {% if vehicle_selector.initial_state.mark == m.id|stringformat:"s" %}selected{% endif %}>
+                                {{ m.name }}
+                            </option>
+                        {% endfor %}
                     </select>
                 </div>
 
@@ -393,23 +398,9 @@
         let selectedModificationId = "";
         let initialPreview = {};
 
-        try {
-            initialState = JSON.parse(initialStateRaw || "{}");
-        } catch (error) {
-            initialState = {};
-        }
-
-        try {
-            selectedModificationId = JSON.parse(selectedModificationIdRaw || "\"\"");
-        } catch (error) {
-            selectedModificationId = "";
-        }
-
-        try {
-            initialPreview = JSON.parse(previewRaw || "{}");
-        } catch (error) {
-            initialPreview = {};
-        }
+        try { initialState = JSON.parse(initialStateRaw || "{}"); } catch (e) { initialState = {}; }
+        try { selectedModificationId = JSON.parse(selectedModificationIdRaw || "\"\""); } catch (e) { selectedModificationId = ""; }
+        try { initialPreview = JSON.parse(previewRaw || "{}"); } catch (e) { initialPreview = {}; }
 
         const formModificationField = document.getElementById("{{ form.modification.id_for_label }}");
         const statusChip = document.getElementById("vehicle-selector-status");
@@ -464,7 +455,6 @@
         function setStatusSelected() {
             statusChip.textContent = "Автомобиль выбран";
             statusChip.className = "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800";
-
             previewChip.textContent = "Выбрано";
             previewChip.className = "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800";
         }
@@ -472,14 +462,12 @@
         function setStatusEmpty() {
             statusChip.textContent = "Автомобиль не выбран";
             statusChip.className = "inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800";
-
             previewChip.textContent = "Пока не выбран";
             previewChip.className = "inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-700";
         }
 
         function updatePreview(preview) {
             const data = preview || {};
-
             previewMark.textContent = data.mark || "—";
             previewModel.textContent = data.model || "—";
             previewGeneration.textContent = data.generation || "—";
@@ -495,10 +483,6 @@
             }
         }
 
-        function resetPreview() {
-            updatePreview({});
-        }
-
         function setFormModificationValue(value) {
             if (!formModificationField) return;
             formModificationField.value = value ? String(value) : "";
@@ -506,378 +490,159 @@
 
         function buildQueryString() {
             const params = new URLSearchParams();
-
             if (state.mark) params.set("mark", state.mark);
             if (state.model) params.set("model", state.model);
-
-            state.generations.forEach((value) => params.append("generations", value));
-            state.configurations.forEach((value) => params.append("configurations", value));
-            state.engine_types.forEach((value) => params.append("engine_types", value));
-            state.drive_types.forEach((value) => params.append("drive_types", value));
-            state.transmissions.forEach((value) => params.append("transmissions", value));
-
+            state.generations.forEach((v) => params.append("generations", v));
+            state.configurations.forEach((v) => params.append("configurations", v));
+            state.engine_types.forEach((v) => params.append("engine_types", v));
+            state.drive_types.forEach((v) => params.append("drive_types", v));
+            state.transmissions.forEach((v) => params.append("transmissions", v));
             return params.toString();
-        }
-
-        function clearSelect(select, placeholder, disabled = false) {
-            if (!select) return;
-            select.innerHTML = `<option value="">${placeholder}</option>`;
-            select.disabled = disabled;
         }
 
         function fillSelect(select, options, selectedValue, placeholder) {
             if (!select) return;
-
-            const normalizedSelectedValue = normalizeOptionValue(selectedValue);
+            const normVal = normalizeOptionValue(selectedValue);
             const rows = Array.isArray(options) ? options : [];
-
             select.innerHTML = `<option value="">${placeholder}</option>`;
 
-            rows.forEach((option) => {
-                const value = normalizeOptionValue(option.id ?? option.value ?? option.code ?? option.name);
-                const label = String(option.name ?? option.label ?? option.value ?? option.code ?? value);
-                const selectedAttr = value === normalizedSelectedValue ? " selected" : "";
-                select.insertAdjacentHTML(
-                    "beforeend",
-                    `<option value="${escapeHtml(value)}"${selectedAttr}>${escapeHtml(label)}</option>`
-                );
+            rows.forEach((opt) => {
+                const val = normalizeOptionValue(opt.id ?? opt.value ?? opt.powertrain_type ?? opt.drive_type ?? opt.transmission_type);
+                const lbl = String(opt.name ?? opt.label ?? opt.value ?? opt.code ?? val);
+                const sel = val === normVal ? " selected" : "";
+                select.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(val)}"${sel}>${escapeHtml(lbl)}</option>`);
             });
-
-            select.disabled = rows.length === 0;
-        }
-
-        function extractOptions(payload, key) {
-            if (!payload || !payload.options) return [];
-            return Array.isArray(payload.options[key]) ? payload.options[key] : [];
+            select.disabled = (rows.length === 0 && select !== markSelect);
         }
 
         function renderResults(results) {
             const rows = Array.isArray(results) ? results : [];
             resultsCount.textContent = String(rows.length);
             resultsList.innerHTML = "";
-
             if (!rows.length) {
                 resultsEmpty.classList.remove("hidden");
                 resultsEmpty.textContent = "По текущим фильтрам модификации не найдены.";
                 return;
             }
-
             resultsEmpty.classList.add("hidden");
 
             rows.forEach((item) => {
-                const markName = item?.mark?.name || "—";
-                const modelName = item?.model?.name || "—";
-                const generationName = item?.generation?.name || "—";
-                const configurationName = item?.configuration?.name || "—";
-                const modificationName = item?.name || "—";
-                const sourceId = item?.source_id || "—";
+                const markN = item?.mark?.name || "—";
+                const modelN = item?.model?.name || "—";
+                const genN = item?.generation?.name || "—";
+                const cfgN = item?.configuration?.name || "—";
+                const modN = item?.name || "—";
+                const sid = item?.source_id || "—";
                 const itemId = String(item?.id || "");
-                const isSelected = itemId && itemId === String(state.selected_modification_id);
+                const isSel = itemId === String(state.selected_modification_id);
 
                 const card = document.createElement("button");
                 card.type = "button";
-                card.className = [
-                    "w-full rounded-2xl border p-4 text-left shadow-sm transition",
-                    isSelected
-                        ? "border-emerald-300 bg-emerald-50 ring-2 ring-emerald-100"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                ].join(" ");
-
+                card.className = `w-full rounded-2xl border p-4 text-left shadow-sm transition ${isSel ? 'border-emerald-300 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`;
                 card.innerHTML = `
                     <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <div class="text-sm font-semibold text-slate-900">
-                                    ${escapeHtml(markName)} / ${escapeHtml(modelName)}
-                                </div>
-                                ${isSelected ? '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">Выбрана</span>' : ''}
+                                <div class="text-sm font-semibold text-slate-900">${escapeHtml(markN)} / ${escapeHtml(modelN)}</div>
+                                ${isSel ? '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">Выбрана</span>' : ''}
                             </div>
-
-                            <div class="mt-2 text-sm text-slate-600">
-                                ${escapeHtml(generationName)} / ${escapeHtml(configurationName)}
-                            </div>
-
-                            <div class="mt-2 text-sm font-medium text-slate-900">
-                                ${escapeHtml(modificationName)}
-                            </div>
+                            <div class="mt-2 text-sm text-slate-600">${escapeHtml(genN)} / ${escapeHtml(cfgN)}</div>
+                            <div class="mt-2 text-sm font-medium text-slate-900">${escapeHtml(modN)}</div>
                         </div>
-
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:min-w-[220px]">
                             <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                                 <div class="text-xs text-slate-500">Source ID</div>
-                                <div class="mt-1 text-sm font-semibold text-slate-900">
-                                    ${escapeHtml(sourceId)}
-                                </div>
+                                <div class="mt-1 text-sm font-semibold text-slate-900">${escapeHtml(sid)}</div>
                             </div>
-
                             <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                                 <div class="text-xs text-slate-500">ID</div>
-                                <div class="mt-1 text-sm font-semibold text-slate-900">
-                                    ${escapeHtml(itemId || "—")}
-                                </div>
+                                <div class="mt-1 text-sm font-semibold text-slate-900">${escapeHtml(itemId || "—")}</div>
                             </div>
                         </div>
                     </div>
                 `;
 
-                card.addEventListener("click", function () {
+                card.addEventListener("click", () => {
                     state.selected_modification_id = itemId;
                     setFormModificationValue(itemId);
-
                     updatePreview({
-                        mark: markName,
-                        model: modelName,
-                        generation: generationName,
-                        configuration: configurationName,
-                        modification: modificationName,
-                        source_id: sourceId,
-                        label: [markName, modelName, generationName, configurationName, modificationName].filter(Boolean).join(" / "),
+                        mark: markN, model: modelN, generation: genN, configuration: cfgN, modification: modN, source_id: sid,
+                        label: [markN, modelN, genN, cfgN, modN].filter(Boolean).join(" / "),
                         modification_id: itemId,
                     });
-
                     renderResults(rows);
                 });
-
                 resultsList.appendChild(card);
             });
         }
 
-        function applyOptions(payload) {
-            fillSelect(
-                markSelect,
-                extractOptions(payload, "marks"),
-                state.mark,
-                "Выбери марку"
-            );
-
-            fillSelect(
-                modelSelect,
-                extractOptions(payload, "models"),
-                state.model,
-                state.mark ? "Выбери модель" : "Сначала выбери марку"
-            );
-
-            fillSelect(
-                generationSelect,
-                extractOptions(payload, "generations"),
-                state.generations[0] || "",
-                state.model ? "Выбери поколение" : "Сначала выбери модель"
-            );
-
-            fillSelect(
-                configurationSelect,
-                extractOptions(payload, "configurations"),
-                state.configurations[0] || "",
-                state.generations.length ? "Выбери конфигурацию" : "Сначала выбери поколение"
-            );
-
-            fillSelect(
-                engineTypeSelect,
-                extractOptions(payload, "engine_types"),
-                state.engine_types[0] || "",
-                "Любой"
-            );
-
-            fillSelect(
-                driveTypeSelect,
-                extractOptions(payload, "drive_types"),
-                state.drive_types[0] || "",
-                "Любой"
-            );
-
-            fillSelect(
-                transmissionSelect,
-                extractOptions(payload, "transmissions"),
-                state.transmissions[0] || "",
-                "Любая"
-            );
-        }
-
         async function loadResults() {
             if (!apiUrl) return;
-
             refreshBtn.disabled = true;
             refreshBtn.textContent = "Загрузка…";
-
             try {
                 const query = buildQueryString();
                 const response = await fetch(query ? `${apiUrl}?${query}` : apiUrl, {
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest",
-                    },
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const payload = await response.json();
-                applyOptions(payload);
+                
+                // Обновляем списки опций
+                if (payload.options) {
+                    fillSelect(markSelect, payload.options.marks, state.mark, "Выбери марку");
+                    fillSelect(modelSelect, payload.options.models, state.model, state.mark ? "Выбери модель" : "Сначала выбери марку");
+                    fillSelect(generationSelect, payload.options.generations, state.generations[0], state.model ? "Выбери поколение" : "Сначала выбери модель");
+                    fillSelect(configurationSelect, payload.options.configurations, state.configurations[0], state.generations.length ? "Выбери конфигурацию" : "Сначала выбери поколение");
+                    fillSelect(engineTypeSelect, payload.options.engine_types, state.engine_types[0], "Любой");
+                    fillSelect(driveTypeSelect, payload.options.drive_types, state.drive_types[0], "Любой");
+                    fillSelect(transmissionSelect, payload.options.transmissions, state.transmissions[0], "Любая");
+                }
                 renderResults(payload.results || []);
             } catch (error) {
-                resultsCount.textContent = "0";
-                resultsList.innerHTML = "";
+                console.error(error);
                 resultsEmpty.classList.remove("hidden");
-                resultsEmpty.textContent = "Не удалось загрузить результаты. Проверь endpoint filter_api и формат ответа.";
+                resultsEmpty.textContent = "Ошибка загрузки данных.";
             } finally {
                 refreshBtn.disabled = false;
                 refreshBtn.textContent = "Обновить результаты";
             }
         }
 
-        function resetBelowMark() {
-            state.model = "";
-            state.generations = [];
-            state.configurations = [];
-            state.engine_types = [];
-            state.drive_types = [];
-            state.transmissions = [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-
-            clearSelect(modelSelect, "Сначала выбери марку", true);
-            clearSelect(generationSelect, "Сначала выбери модель", true);
-            clearSelect(configurationSelect, "Сначала выбери поколение", true);
-            clearSelect(engineTypeSelect, "Любой", true);
-            clearSelect(driveTypeSelect, "Любой", true);
-            clearSelect(transmissionSelect, "Любая", true);
-        }
-
-        function resetBelowModel() {
-            state.generations = [];
-            state.configurations = [];
-            state.engine_types = [];
-            state.drive_types = [];
-            state.transmissions = [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-
-            clearSelect(generationSelect, "Сначала выбери модель", true);
-            clearSelect(configurationSelect, "Сначала выбери поколение", true);
-            clearSelect(engineTypeSelect, "Любой", true);
-            clearSelect(driveTypeSelect, "Любой", true);
-            clearSelect(transmissionSelect, "Любая", true);
-        }
-
-        function resetBelowGeneration() {
-            state.configurations = [];
-            state.engine_types = [];
-            state.drive_types = [];
-            state.transmissions = [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-
-            clearSelect(configurationSelect, "Сначала выбери поколение", true);
-            clearSelect(engineTypeSelect, "Любой", true);
-            clearSelect(driveTypeSelect, "Любой", true);
-            clearSelect(transmissionSelect, "Любая", true);
-        }
-
-        function resetBelowConfiguration() {
-            state.engine_types = [];
-            state.drive_types = [];
-            state.transmissions = [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-
-            clearSelect(engineTypeSelect, "Любой", true);
-            clearSelect(driveTypeSelect, "Любой", true);
-            clearSelect(transmissionSelect, "Любая", true);
-        }
-
-        markSelect.addEventListener("change", function () {
-            state.mark = this.value || "";
-            resetBelowMark();
-            loadResults();
+        markSelect.addEventListener("change", function () { 
+            state.mark = this.value; state.model = ""; state.generations = []; state.configurations = []; loadResults(); 
+        });
+        modelSelect.addEventListener("change", function () { 
+            state.model = this.value; state.generations = []; state.configurations = []; loadResults(); 
+        });
+        generationSelect.addEventListener("change", function () { 
+            state.generations = this.value ? [this.value] : []; state.configurations = []; loadResults(); 
+        });
+        configurationSelect.addEventListener("change", function () { 
+            state.configurations = this.value ? [this.value] : []; loadResults(); 
+        });
+        
+        [engineTypeSelect, driveTypeSelect, transmissionSelect].forEach(el => {
+            el.addEventListener("change", function() {
+                const key = this.name.replace('vehicle_', '');
+                state[key] = this.value ? [this.value] : [];
+                loadResults();
+            });
         });
 
-        modelSelect.addEventListener("change", function () {
-            state.model = this.value || "";
-            resetBelowModel();
-            loadResults();
+        refreshBtn.addEventListener("click", loadResults);
+        resetBtn.addEventListener("click", () => {
+            state.mark = ""; state.model = ""; state.generations = []; state.configurations = [];
+            state.engine_types = []; state.drive_types = []; state.transmissions = [];
+            state.selected_modification_id = ""; setFormModificationValue("");
+            updatePreview({}); loadResults();
         });
 
-        generationSelect.addEventListener("change", function () {
-            state.generations = this.value ? [this.value] : [];
-            resetBelowGeneration();
-            loadResults();
-        });
-
-        configurationSelect.addEventListener("change", function () {
-            state.configurations = this.value ? [this.value] : [];
-            resetBelowConfiguration();
-            loadResults();
-        });
-
-        engineTypeSelect.addEventListener("change", function () {
-            state.engine_types = this.value ? [this.value] : [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-            loadResults();
-        });
-
-        driveTypeSelect.addEventListener("change", function () {
-            state.drive_types = this.value ? [this.value] : [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-            loadResults();
-        });
-
-        transmissionSelect.addEventListener("change", function () {
-            state.transmissions = this.value ? [this.value] : [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-            resetPreview();
-            loadResults();
-        });
-
-        refreshBtn.addEventListener("click", function () {
-            loadResults();
-        });
-
-        resetBtn.addEventListener("click", function () {
-            state.mark = "";
-            state.model = "";
-            state.generations = [];
-            state.configurations = [];
-            state.engine_types = [];
-            state.drive_types = [];
-            state.transmissions = [];
-            state.selected_modification_id = "";
-            setFormModificationValue("");
-
-            clearSelect(markSelect, "Выбери марку", false);
-            clearSelect(modelSelect, "Сначала выбери марку", true);
-            clearSelect(generationSelect, "Сначала выбери модель", true);
-            clearSelect(configurationSelect, "Сначала выбери поколение", true);
-            clearSelect(engineTypeSelect, "Любой", true);
-            clearSelect(driveTypeSelect, "Любой", true);
-            clearSelect(transmissionSelect, "Любая", true);
-
-            resultsList.innerHTML = "";
-            resultsCount.textContent = "0";
-            resultsEmpty.classList.remove("hidden");
-            resultsEmpty.textContent = "Сначала выбери параметры автомобиля, затем загрузи результаты.";
-
-            resetPreview();
-            loadResults();
-        });
-
-        setFormModificationValue(state.selected_modification_id || "");
-        if (state.selected_modification_id && initialPreview && (initialPreview.label || initialPreview.modification)) {
+        setFormModificationValue(state.selected_modification_id);
+        if (state.selected_modification_id && initialPreview.label) {
             updatePreview(initialPreview);
-        } else {
-            resetPreview();
         }
-
         loadResults();
     })();
 </script>
 {% endblock %}
-
