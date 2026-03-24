@@ -22,6 +22,9 @@ file_paths = [
     "templates/staff/packages/_price_summary.html",
     "templates/staff/packages/_promo_card.html",
     "templates/staff/packages/_vehicle_card.html",
+    "cars/urls.py",
+    "cars/views.py",
+    "templates/cars/filter.html"
 ]
 
 # Путь к файлу, который мы создаем
