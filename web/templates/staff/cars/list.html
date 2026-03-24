@@ -276,36 +276,57 @@
         const activeFiltersContainer = document.getElementById('activeFilters');
         const filtersForm = document.getElementById('filtersForm');
 
+        // 1. Умное открытие доп. параметров
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('engine_type') || urlParams.has('drive_type') || urlParams.has('has_packages')) {
+            advancedFilters.classList.remove('hidden');
+            toggleAdvancedBtn.textContent = 'Скрыть доп. параметры';
+        }
+
         toggleAdvancedBtn.addEventListener('click', () => {
             advancedFilters.classList.toggle('hidden');
             toggleAdvancedBtn.textContent = advancedFilters.classList.contains('hidden') ? 'Доп. параметры' : 'Скрыть доп. параметры';
         });
 
+        // 2. Очистка формы перед отправкой (удаляем пустые параметры из URL)
+        filtersForm.addEventListener('submit', function(e) {
+            const inputs = filtersForm.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                if (input.value === "" || input.value === null) {
+                    input.disabled = true; // Выключенные поля не попадают в URL
+                }
+            });
+        });
+
+        // 3. Отрисовка чипсов
         function renderActiveChips() {
             activeFiltersContainer.innerHTML = '';
-            const formData = new FormData(filtersForm);
+            const params = new URLSearchParams(window.location.search);
             
-            for (let [key, value] of formData.entries()) {
-                if (value && key !== 'page' && value !== 'on') {
+            params.forEach((value, key) => {
+                if (value && key !== 'page' && key !== 'format') {
                     const chip = document.createElement('div');
                     chip.className = 'multi-chip';
+                    
+                    let displayValue = value;
+                    let displayKey = key;
+                    if (key === 'has_packages') { displayKey = 'Фильтр'; displayValue = 'С пакетами'; }
+
                     chip.innerHTML = `
-                        <span class="text-[11px] opacity-70 uppercase mr-1">${key}:</span>
-                        <span>${value}</span>
+                        <span class="text-[11px] opacity-70 uppercase mr-1">${displayKey}:</span>
+                        <span>${displayValue}</span>
                         <button type="button" class="ml-1 text-blue-400 hover:text-blue-600" data-clear="${key}">×</button>
                     `;
                     activeFiltersContainer.appendChild(chip);
                 }
-            }
+            });
 
             activeFiltersContainer.querySelectorAll('[data-clear]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const fieldName = btn.dataset.clear;
-                    const field = filtersForm.querySelector(`[name="${fieldName}"]`);
-                    if (field) {
-                        field.value = '';
-                        filtersForm.submit();
-                    }
+                    const key = btn.dataset.clear;
+                    urlParams.delete(key);
+                    urlParams.delete('page'); // сбрасываем страницу при удалении фильтра
+                    window.location.search = urlParams.toString();
                 });
             });
         }
