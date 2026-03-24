@@ -3,14 +3,7 @@
 {% block title %}{{ package.display_title }}{% endblock %}
 
 {% block page_header %}
-    {% include "staff/packages/_page_header.html" with
-        breadcrumbs=breadcrumbs
-        title=package.display_title
-        subtitle=package.slug
-        status_label=package.get_status_display
-        status_tone=status_tone
-        show_actions=False
-    %}
+    {% include "staff/packages/_page_header.html" with breadcrumbs=breadcrumbs title=package.display_title subtitle=package.slug status_label=package.get_status_display status_tone=status_tone %}
 {% endblock %}
 
 {% block content %}
@@ -19,18 +12,16 @@
         <a href="{% url 'staff:package_list' %}" class="staff-btn-secondary">
             Назад к списку
         </a>
-        <a href="#" class="staff-btn-secondary">
+        <a href="{% url 'staff:package_edit' package.id %}" class="staff-btn-secondary">
             Редактировать
         </a>
-        <a href="#" class="staff-btn-danger">
+        <button type="button" class="staff-btn-danger" disabled>
             Удалить
-        </a>
+        </button>
     </section>
 
     <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <!-- Левая колонка -->
         <div class="xl:col-span-8 space-y-6">
-            <!-- Основная информация -->
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-900">Основная информация</h2>
@@ -39,7 +30,7 @@
                     </p>
                 </div>
 
-                <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 text-sm">
+                <div class="mt-5 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                     <div>
                         <div class="text-slate-500">ID</div>
                         <div class="mt-1 font-medium text-slate-900">{{ package.id }}</div>
@@ -67,7 +58,7 @@
 
                     <div>
                         <div class="text-slate-500">Modification source ID</div>
-                        <div class="mt-1 font-medium text-slate-900">{{ package.modification_source_id|default:"—" }}</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.modification.source_id|default:"—" }}</div>
                     </div>
 
                     <div>
@@ -82,22 +73,10 @@
                 </div>
             </section>
 
-            <!-- Vehicle -->
-            {% include "staff/packages/_vehicle_card.html" with
-                vehicle=vehicle
-                card_title="Автомобиль"
-                card_subtitle="Полная цепочка привязки пакета к модификации."
-            %}
+            {% include "staff/packages/_vehicle_card.html" with vehicle=vehicle card_title="Автомобиль" card_subtitle="Полная цепочка привязки пакета к модификации." %}
 
-            <!-- Promo -->
-            {% include "staff/packages/_promo_card.html" with
-                mode="detail"
-                package=package
-                card_title="Promo"
-                card_subtitle="Параметры акции и периода действия."
-            %}
+            {% include "staff/packages/_promo_card.html" with mode="detail" package=package card_title="Акция" card_subtitle="Параметры акции и периода действия." %}
 
-            <!-- Тексты -->
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-900">Тексты</h2>
@@ -130,7 +109,6 @@
                 </div>
             </section>
 
-            <!-- Категории состава -->
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <div>
@@ -139,7 +117,9 @@
                             Локальные категории, к которым привязаны строки пакета.
                         </p>
                     </div>
-                    <a href="#" class="staff-btn-secondary">Добавить категорию</a>
+                    <button type="button" class="staff-btn-secondary" disabled>
+                        Добавить категорию
+                    </button>
                 </div>
 
                 <div class="mt-5 space-y-3">
@@ -165,7 +145,6 @@
                 </div>
             </section>
 
-            <!-- Состав пакета -->
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <div>
@@ -174,7 +153,9 @@
                             Номенклатура сгруппирована по локальным категориям пакета.
                         </p>
                     </div>
-                    <a href="#" class="staff-btn-secondary">Добавить позицию</a>
+                    <button type="button" class="staff-btn-secondary" disabled>
+                        Добавить позицию
+                    </button>
                 </div>
 
                 <div class="mt-5 space-y-6">
@@ -192,7 +173,7 @@
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto thin-scrollbar rounded-xl border border-slate-200">
+                            <div class="thin-scrollbar overflow-x-auto rounded-xl border border-slate-200">
                                 <table class="min-w-full text-sm">
                                     <thead class="border-b border-slate-200 bg-slate-50">
                                         <tr class="text-left text-slate-600">
@@ -236,23 +217,11 @@
             </section>
         </div>
 
-        <!-- Правая колонка -->
         <div class="xl:col-span-4 space-y-6">
-            {% include "staff/packages/_image_card.html" with
-                mode="detail"
-                package=package
-                card_title="Изображение"
-                card_subtitle="Главная картинка пакета."
-            %}
+            {% include "staff/packages/_image_card.html" with mode="detail" package=package card_title="Изображение" card_subtitle="Главная картинка пакета." %}
 
-            {% include "staff/packages/_price_summary.html" with
-                mode="detail"
-                package=package
-                card_title="Сводка цен"
-                card_subtitle="Все вычисляемые ценовые поля пакета."
-            %}
+            {% include "staff/packages/_price_summary.html" with mode="detail" package=package card_title="Сводка цен" card_subtitle="Все вычисляемые ценовые поля пакета." %}
 
-            <!-- Client preview -->
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-900">Client preview</h2>
@@ -281,7 +250,7 @@
                             {{ package.public_title|default:package.display_title }}
                         </h3>
 
-                        <p class="mt-2 text-sm text-slate-500 line-clamp-2">
+                        <p class="mt-2 line-clamp-2 text-sm text-slate-500">
                             {{ package.description_short|default:"Описание пока не заполнено." }}
                         </p>
 

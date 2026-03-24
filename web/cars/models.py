@@ -930,7 +930,7 @@ class Modification(TimestampedModel):
         return self.configuration.body_type
 
     @property
-    def photo(self):
+    def photo(self) -> ConfigurationPhoto | None:
         return getattr(self.configuration, "photo", None)
 
 

@@ -3,12 +3,7 @@
 {% block title %}Создать пакет{% endblock %}
 
 {% block page_header %}
-    {% include "staff/packages/_page_header.html" with
-        breadcrumbs=breadcrumbs
-        title="Создать пакет"
-        subtitle="Создание нового пакета услуг для одной конкретной модификации автомобиля."
-        show_actions=False
-    %}
+    {% include "staff/packages/_page_header.html" with breadcrumbs=breadcrumbs title="Создать пакет" subtitle="Создание нового пакета услуг для одной конкретной модификации автомобиля." %}
 {% endblock %}
 
 {% block content %}
@@ -22,7 +17,6 @@
             </section>
         {% endif %}
 
-        <!-- Основная информация -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div>
                 <h2 class="text-lg font-semibold text-slate-900">Основная информация</h2>
@@ -79,7 +73,6 @@
             </div>
         </section>
 
-        <!-- Тексты -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div>
                 <h2 class="text-lg font-semibold text-slate-900">Тексты и описания</h2>
@@ -115,7 +108,6 @@
             </div>
         </section>
 
-        <!-- Выбор автомобиля -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div>
                 <h2 class="text-lg font-semibold text-slate-900">Выбор автомобиля</h2>
@@ -136,39 +128,15 @@
             </div>
         </section>
 
-        <!-- Vehicle preview -->
-        {% if vehicle %}
-            {% include "staff/packages/_vehicle_card.html" with
-                vehicle=vehicle
-                card_title="Предпросмотр автомобиля"
-                card_subtitle="Так будет выглядеть привязка пакета к автомобилю после сохранения."
-            %}
-        {% endif %}
+        {# vehicle preview будет добавлен позже, когда появится реальный preselect modification #}
 
-        <!-- Promo -->
-        {% include "staff/packages/_promo_card.html" with
-            mode="form"
-            form=form
-            card_title="Promo"
-            card_subtitle="Если пакет участвует в акции, укажи бейдж, текст и период действия."
-        %}
+        {% include "staff/packages/_promo_card.html" with mode="form" form=form card_title="Акция" card_subtitle="Если пакет участвует в акции, укажи бейдж, текст и период действия." %}
 
-        <!-- Image -->
-        {% include "staff/packages/_image_card.html" with
-            mode="form"
-            image_form=image_form
-            card_title="Изображение"
-            card_subtitle="Главная картинка пакета. Состав пакета будет добавлен позже."
-        %}
+        {% include "staff/packages/_image_card.html" with mode="form" image_form=image_form card_title="Изображение" card_subtitle="Главная картинка пакета. Состав пакета будет добавлен позже." %}
     </div>
 
-    <!-- Правая колонка -->
     <div class="xl:col-span-4 space-y-6">
-        {% include "staff/packages/_price_summary.html" with
-            mode="empty"
-            card_title="Сводка цен"
-            card_subtitle="После создания пакета и добавления состава здесь появится расчёт."
-        %}
+        {% include "staff/packages/_price_summary.html" with mode="empty" card_title="Сводка цен" card_subtitle="После создания пакета и добавления состава здесь появится расчёт." %}
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-6">
             <div>
@@ -180,7 +148,7 @@
 
             <div class="mt-5 space-y-3 text-sm text-slate-600">
                 <p>Категории состава и номенклатурные позиции удобнее добавлять уже после сохранения пакета.</p>
-                <p>После успешного сохранения произойдёт переход на страницу просмотра пакета.</p>
+                <p>После успешного сохранения можно либо вернуться в список, либо перейти на страницу просмотра пакета.</p>
                 <p>Slug будет сгенерирован автоматически, если не задаётся моделью вручную.</p>
             </div>
 

@@ -7,10 +7,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-b2sh!qk&=%azim-=s&=d1(-1upbq7H&-^-=tmPeHPLKXD')
 
-DEBUG = int(os.environ.get('DEBUG', 0))
+DEBUG = os.environ.get('DEBUG', '0') == '1'
 
-ALLOWED_HOSTS: list = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000']
+ALLOWED_HOSTS: list[str] = [host for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if host]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
 
 if DEBUG:
     ALLOWED_HOSTS: list = ['*']
@@ -50,6 +54,7 @@ THIRD_PARTY_APPS = [
     'drf_spectacular',
     'corsheaders',
     'rosetta',
+    'django_filters',
 ]
 
 LOCAL_APPS = [

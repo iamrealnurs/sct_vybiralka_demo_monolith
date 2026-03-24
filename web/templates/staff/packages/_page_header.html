@@ -41,9 +41,13 @@
         {% endif %}
     </div>
 
-    {% if show_actions %}
+    {% if actions %}
         <div class="flex flex-wrap items-center gap-2">
-            {% block page_header_actions %}{% endblock %}
+            {% for action in actions %}
+                <a href="{{ action.url }}" class="{{ action.class }}">
+                    {{ action.label }}
+                </a>
+            {% endfor %}
         </div>
     {% endif %}
 </section>

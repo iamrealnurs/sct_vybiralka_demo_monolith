@@ -20,7 +20,7 @@
         }
 
         .thin-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(148,163,184,.55);
+            background: rgba(148, 163, 184, 0.55);
             border-radius: 999px;
         }
 
@@ -36,7 +36,10 @@
         }
 
         .staff-card {
-            @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+            border-radius: 1rem;
+            border: 1px solid rgb(226 232 240);
+            background: white;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         }
 
         .staff-input,
@@ -162,6 +165,24 @@
 </head>
 <body class="min-h-screen text-slate-900">
     <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {% if messages %}
+            <section class="space-y-3">
+                {% for message in messages %}
+                    <div class="rounded-2xl border p-4 text-sm
+                        {% if message.tags == 'success' %}
+                            border-emerald-200 bg-emerald-50 text-emerald-800
+                        {% elif message.tags == 'error' %}
+                            border-red-200 bg-red-50 text-red-800
+                        {% else %}
+                            border-slate-200 bg-slate-50 text-slate-700
+                        {% endif %}
+                    ">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </section>
+        {% endif %}
+
         {% block page_header %}{% endblock %}
         {% block content %}{% endblock %}
     </div>

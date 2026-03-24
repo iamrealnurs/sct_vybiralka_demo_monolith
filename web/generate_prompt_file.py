@@ -3,11 +3,12 @@ import subprocess
 
 # Определяем пути к файлам
 file_paths = [
-    # Models
     "main/models.py",
     "cars/models.py",
     "catalog/models.py",
-    "client/models.py"
+    "client/models.py",
+    "datagen_data/datagen.py",
+    "datagen_data/script.py",
 ]
 
 # Путь к файлу, который мы создаем
@@ -37,6 +38,14 @@ with open(output_file, "w", encoding="utf-8") as f_out:
         f_out.write(f"Ошибка при выполнении команды: {e}\n")
 
 print(f"Файл {output_file} успешно создан!")
+
+
+
+
+
+
+
+
 
 
 

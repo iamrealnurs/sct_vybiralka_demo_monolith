@@ -1,37 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
-from urllib.parse import urlencode
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.core.paginator import EmptyPage, Page, PageNotAnInteger, Paginator
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    OuterRef,
-    Prefetch,
-    Q,
-    QuerySet,
-    Subquery,
-    Value,
-)
+from django.db import transaction
+from django.db.models import Count, DecimalField, OuterRef, Prefetch, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.http import QueryDict
 
-# -------------------------------------------------------------------
-# IMPORTANT:
-# Подставь правильный путь к моделям под своё приложение.
-# Ниже я использую services.models как наиболее вероятный вариант.
-# Если у тебя модели лежат не там - поменяй только этот import.
-# -------------------------------------------------------------------
 from catalog.models import (
     CarServicePackage,
+    NomenclatureItem,
     NomenclatureItemPrice,
     PackageCategory,
     PackageItem,
+    PackageItemCategory,
     PackageStatus,
 )
+
 
 ZERO = Decimal("0.00")
 HUNDRED = Decimal("100.00")
@@ -63,6 +52,36 @@ class StaffPackageListResult:
     preserved_query: str
     categories: QuerySet[PackageCategory]
     status_choices: list[tuple[str, str]]
+
+
+@dataclass(slots=True)
+class PackageItemInput:
+    item_id: int | None
+    row_index: int
+    package_category_id: int | None
+    nomenclature_item_id: int | None
+    quantity: int
+    discount_percent: Decimal
+    sort_order: int
+    is_active: bool
+    is_deleted: bool
+
+
+@dataclass(slots=True)
+class PackageEditContext:
+    package: CarServicePackage
+    package_items: list[PackageItem]
+    package_item_categories: list[PackageItemCategory]
+    nomenclature_items: list[NomenclatureItem]
+    vehicle_label: str
+    base_price: Any
+    line_discount_amount: Any
+    subtotal_after_line_discounts: Any
+    package_discount_amount: Any
+    regular_price: Any
+    promo_price: Any
+    final_price: Any
+    active_items_count: int
 
 
 def quantize_money(value: Decimal | int | float | None) -> Decimal:
@@ -103,10 +122,42 @@ def get_draft_status_value() -> str:
     return getattr(PackageStatus, "DRAFT", "DRAFT")
 
 
+def get_service_item_type_value() -> str:
+    return (
+        getattr(NomenclatureItem.ItemType, "SERVICE", "SERVICE")
+        if hasattr(NomenclatureItem, "ItemType")
+        else "SERVICE"
+    )
+
+
+def build_vehicle_label(package: CarServicePackage) -> str:
+    modification = getattr(package, "modification", None)
+    if not modification:
+        return "—"
+
+    configuration = getattr(modification, "configuration", None)
+    generation = getattr(configuration, "generation", None)
+    model = getattr(generation, "model", None)
+    mark = getattr(model, "mark", None)
+
+    parts: list[str] = []
+    if mark and getattr(mark, "name", None):
+        parts.append(mark.name)
+    if model and getattr(model, "name", None):
+        parts.append(model.name)
+    if generation and getattr(generation, "name", None):
+        parts.append(generation.name)
+    if configuration and getattr(configuration, "name", None):
+        parts.append(configuration.name)
+    if getattr(modification, "name", None):
+        parts.append(modification.name)
+
+    return " / ".join(parts) if parts else "—"
+
+
 def build_base_queryset() -> QuerySet[CarServicePackage]:
     return (
-        CarServicePackage.objects
-        .filter(is_deleted=False)
+        CarServicePackage.objects.filter(is_deleted=False)
         .select_related(
             "category",
             "modification",
@@ -222,31 +273,6 @@ def build_preserved_query(params: QueryDict) -> str:
     return query.urlencode()
 
 
-def get_vehicle_label(package: CarServicePackage) -> str:
-    modification = getattr(package, "modification", None)
-    if not modification:
-        return "—"
-
-    configuration = getattr(modification, "configuration", None)
-    generation = getattr(configuration, "generation", None)
-    model = getattr(generation, "model", None)
-    mark = getattr(model, "mark", None)
-
-    parts: list[str] = []
-    if mark and getattr(mark, "name", None):
-        parts.append(mark.name)
-    if model and getattr(model, "name", None):
-        parts.append(model.name)
-    if generation and getattr(generation, "name", None):
-        parts.append(generation.name)
-    if configuration and getattr(configuration, "name", None):
-        parts.append(configuration.name)
-    if getattr(modification, "name", None):
-        parts.append(modification.name)
-
-    return " / ".join(parts) if parts else "—"
-
-
 def build_kpis(queryset: QuerySet[CarServicePackage]) -> dict[str, int]:
     published_value = get_published_status_value()
     draft_value = get_draft_status_value()
@@ -264,8 +290,7 @@ def get_price_annotated_items_for_page(package_ids: list[int]) -> list[PackageIt
         return []
 
     latest_active_price_subquery = (
-        NomenclatureItemPrice.objects
-        .filter(
+        NomenclatureItemPrice.objects.filter(
             nomenclature_item_id=OuterRef("nomenclature_item_id"),
             is_active=True,
         )
@@ -274,8 +299,7 @@ def get_price_annotated_items_for_page(package_ids: list[int]) -> list[PackageIt
     )
 
     items_qs = (
-        PackageItem.objects
-        .filter(
+        PackageItem.objects.filter(
             package_id__in=package_ids,
             is_deleted=False,
             is_active=True,
@@ -286,7 +310,10 @@ def get_price_annotated_items_for_page(package_ids: list[int]) -> list[PackageIt
         )
         .annotate(
             current_unit_price_db=Coalesce(
-                Subquery(latest_active_price_subquery, output_field=DecimalField(max_digits=12, decimal_places=2)),
+                Subquery(
+                    latest_active_price_subquery,
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
                 Value(ZERO),
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             )
@@ -318,7 +345,10 @@ def build_price_rows(page_packages: list[CarServicePackage]) -> list[PackageRow]
             unit_price = quantize_money(getattr(item, "current_unit_price_db", ZERO))
             quantity = Decimal(item.quantity)
             base_line_total = quantize_money(unit_price * quantity)
-            line_discount = calculate_discount_amount(base_line_total, quantize_money(item.discount_percent))
+            line_discount = calculate_discount_amount(
+                base_line_total,
+                quantize_money(item.discount_percent),
+            )
             final_line_total = quantize_money(base_line_total - line_discount)
 
             base_price += base_line_total
@@ -337,7 +367,7 @@ def build_price_rows(page_packages: list[CarServicePackage]) -> list[PackageRow]
         rows.append(
             PackageRow(
                 package=package,
-                vehicle_label=get_vehicle_label(package),
+                vehicle_label=build_vehicle_label(package),
                 active_items_count=getattr(package, "active_items_count", 0) or 0,
                 base_price=base_price,
                 line_discount_amount=line_discount_amount,
@@ -354,7 +384,11 @@ def build_price_rows(page_packages: list[CarServicePackage]) -> list[PackageRow]
 def get_package_list_data(params: QueryDict) -> StaffPackageListResult:
     base_queryset = build_base_queryset()
     filtered_queryset, filters = apply_filters(base_queryset, params)
-    paginator, page_obj = paginate_queryset(filtered_queryset, params.get("page"), per_page=20)
+    paginator, page_obj = paginate_queryset(
+        filtered_queryset,
+        params.get("page"),
+        per_page=20,
+    )
     page_packages = list(page_obj.object_list)
 
     rows = build_price_rows(page_packages)
@@ -370,6 +404,310 @@ def get_package_list_data(params: QueryDict) -> StaffPackageListResult:
         draft_count=kpis["draft_count"],
         filters=filters,
         preserved_query=build_preserved_query(params),
-        categories=PackageCategory.objects.filter(is_active=True).order_by("sort_order", "name", "code"),
+        categories=PackageCategory.objects.filter(is_active=True).order_by(
+            "sort_order",
+            "name",
+            "code",
+        ),
         status_choices=get_status_choices(),
     )
+
+
+def get_package_for_update(package_id: int) -> CarServicePackage:
+    queryset = (
+        CarServicePackage.objects.filter(is_deleted=False)
+        .select_related(
+            "category",
+            "modification",
+            "modification__configuration",
+            "modification__configuration__generation",
+            "modification__configuration__generation__model",
+            "modification__configuration__generation__model__mark",
+            "image_object",
+        )
+        .prefetch_related(
+            Prefetch(
+                "item_categories",
+                queryset=PackageItemCategory.objects.filter(is_deleted=False).order_by(
+                    "sort_order",
+                    "id",
+                ),
+            ),
+            Prefetch(
+                "items",
+                queryset=(
+                    PackageItem.objects.select_related(
+                        "package_category",
+                        "nomenclature_item",
+                        "nomenclature_item__category",
+                    )
+                    .filter(is_deleted=False)
+                    .order_by("sort_order", "id")
+                ),
+            ),
+        )
+    )
+    return queryset.get(pk=package_id)
+
+
+def build_edit_context(package: CarServicePackage) -> PackageEditContext:
+    package_items = list(package.items.all())
+    package_item_categories = list(package.item_categories.all())
+
+    nomenclature_items = list(
+        NomenclatureItem.objects.filter(is_deleted=False, is_active=True)
+        .select_related("category")
+        .order_by("name", "article")[:500]
+    )
+
+    active_items_count = sum(
+        1
+        for item in package_items
+        if item.is_active and not item.is_deleted
+    )
+
+    return PackageEditContext(
+        package=package,
+        package_items=package_items,
+        package_item_categories=package_item_categories,
+        nomenclature_items=nomenclature_items,
+        vehicle_label=build_vehicle_label(package),
+        base_price=package.base_price,
+        line_discount_amount=package.line_discount_amount,
+        subtotal_after_line_discounts=package.subtotal_after_line_discounts,
+        package_discount_amount=package.package_discount_amount,
+        regular_price=package.regular_price,
+        promo_price=package.promo_price,
+        final_price=package.final_price,
+        active_items_count=active_items_count,
+    )
+
+
+def _parse_int(
+    value: str | None,
+    field_label: str,
+    errors: list[str],
+    row_index: int,
+) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        errors.append(
+            f"Строка #{row_index + 1}: поле «{field_label}» содержит некорректное целое число."
+        )
+        return None
+
+
+def _parse_decimal(
+    value: str | None,
+    field_label: str,
+    errors: list[str],
+    row_index: int,
+) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value).replace(",", "."))
+    except (TypeError, ValueError, InvalidOperation):
+        errors.append(
+            f"Строка #{row_index + 1}: поле «{field_label}» содержит некорректное число."
+        )
+        return None
+
+
+def parse_package_items_from_post(post_data) -> list[PackageItemInput]:
+    total_forms_raw = post_data.get("items-TOTAL_FORMS", "0")
+    try:
+        total_forms = int(total_forms_raw)
+    except (TypeError, ValueError):
+        total_forms = 0
+
+    result: list[PackageItemInput] = []
+
+    for i in range(total_forms):
+        errors: list[str] = []
+
+        item_id = _parse_int(post_data.get(f"items-{i}-id"), "ID строки", errors, i)
+        package_category_id = _parse_int(
+            post_data.get(f"items-{i}-package_category_id"),
+            "Категория строки",
+            errors,
+            i,
+        )
+        nomenclature_item_id = _parse_int(
+            post_data.get(f"items-{i}-nomenclature_item_id"),
+            "Номенклатура",
+            errors,
+            i,
+        )
+        quantity = _parse_int(post_data.get(f"items-{i}-quantity"), "Количество", errors, i)
+        sort_order = _parse_int(post_data.get(f"items-{i}-sort_order"), "Порядок", errors, i)
+        discount_percent = _parse_decimal(
+            post_data.get(f"items-{i}-discount_percent"),
+            "Скидка",
+            errors,
+            i,
+        )
+
+        is_active = post_data.get(f"items-{i}-is_active") == "on"
+        is_deleted = post_data.get(f"items-{i}-is_deleted") == "on"
+
+        if errors:
+            raise ValidationError(errors)
+
+        result.append(
+            PackageItemInput(
+                item_id=item_id,
+                row_index=i,
+                package_category_id=package_category_id,
+                nomenclature_item_id=nomenclature_item_id,
+                quantity=quantity or 1,
+                discount_percent=discount_percent or Decimal("0.00"),
+                sort_order=sort_order or i,
+                is_active=is_active,
+                is_deleted=is_deleted,
+            )
+        )
+
+    return result
+
+
+def validate_package_items(
+    package: CarServicePackage,
+    items_data: list[PackageItemInput],
+    target_status: str | None,
+) -> None:
+    errors: list[str] = []
+
+    category_ids = set(
+        PackageItemCategory.objects.filter(
+            package=package,
+            is_deleted=False,
+        ).values_list("id", flat=True)
+    )
+
+    nomenclature_map = {
+        item.id: item
+        for item in NomenclatureItem.objects.filter(
+            id__in=[
+                row.nomenclature_item_id
+                for row in items_data
+                if row.nomenclature_item_id is not None
+            ],
+            is_deleted=False,
+        )
+    }
+
+    active_not_deleted_rows = [
+        row
+        for row in items_data
+        if not row.is_deleted and row.is_active
+    ]
+
+    seen_nomenclature_ids: set[int] = set()
+    service_value = get_service_item_type_value()
+    published_value = get_published_status_value()
+
+    for row in items_data:
+        if row.is_deleted:
+            continue
+
+        if row.package_category_id is None:
+            errors.append(f"Строка #{row.row_index + 1}: нужно выбрать категорию строки.")
+        elif row.package_category_id not in category_ids:
+            errors.append(
+                f"Строка #{row.row_index + 1}: категория строки не принадлежит текущему пакету."
+            )
+
+        if row.nomenclature_item_id is None:
+            errors.append(f"Строка #{row.row_index + 1}: нужно выбрать номенклатуру.")
+        elif row.nomenclature_item_id not in nomenclature_map:
+            errors.append(
+                f"Строка #{row.row_index + 1}: номенклатура не найдена или удалена."
+            )
+        else:
+            if row.nomenclature_item_id in seen_nomenclature_ids:
+                errors.append(
+                    f"Строка #{row.row_index + 1}: одна и та же номенклатура не может повторяться внутри пакета."
+                )
+            seen_nomenclature_ids.add(row.nomenclature_item_id)
+
+            nomenclature_item = nomenclature_map[row.nomenclature_item_id]
+            if nomenclature_item.item_type == service_value and row.quantity > 1:
+                errors.append(
+                    f"Строка #{row.row_index + 1}: для услуги количество не может быть больше 1."
+                )
+
+        if row.quantity < 1:
+            errors.append(f"Строка #{row.row_index + 1}: количество должно быть не меньше 1.")
+
+        if row.discount_percent < Decimal("0.00") or row.discount_percent > Decimal("100.00"):
+            errors.append(
+                f"Строка #{row.row_index + 1}: скидка должна быть в диапазоне от 0 до 100."
+            )
+
+        if row.sort_order < 0:
+            errors.append(
+                f"Строка #{row.row_index + 1}: sort_order не может быть отрицательным."
+            )
+
+    if target_status == published_value and not active_not_deleted_rows:
+        errors.append("Нельзя публиковать пакет без хотя бы одной активной строки состава.")
+
+    if errors:
+        raise ValidationError(errors)
+
+
+def save_package_items(
+    package: CarServicePackage,
+    items_data: list[PackageItemInput],
+) -> None:
+    existing_items = {
+        item.id: item
+        for item in PackageItem.objects.filter(package=package)
+    }
+
+    for row in items_data:
+        if row.item_id and row.item_id in existing_items:
+            item = existing_items[row.item_id]
+        else:
+            item = PackageItem(package=package)
+
+        item.package_category_id = row.package_category_id
+        item.nomenclature_item_id = row.nomenclature_item_id
+        item.quantity = row.quantity
+        item.discount_percent = row.discount_percent
+        item.sort_order = row.sort_order
+        item.is_active = row.is_active
+        item.is_deleted = row.is_deleted
+
+        item.full_clean()
+        item.save()
+
+
+@transaction.atomic
+def save_package_update(
+    *,
+    form,
+    package: CarServicePackage,
+    items_data: list[PackageItemInput],
+) -> CarServicePackage:
+    updated_package = form.save()
+    updated_package.full_clean()
+    updated_package.save()
+
+    validate_package_items(
+        package=updated_package,
+        items_data=items_data,
+        target_status=form.cleaned_data.get("status"),
+    )
+
+    save_package_items(
+        package=updated_package,
+        items_data=items_data,
+    )
+
+    return updated_package
+

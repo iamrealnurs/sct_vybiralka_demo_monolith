@@ -21,7 +21,7 @@
             </div>
 
             <div>
-                <label class="staff-label" for="{{ image_form.alt_text.id_for_label }}">Alt text</label>
+                <label class="staff-label" for="{{ image_form.alt_text.id_for_label }}">Альтернативный текст</label>
                 {{ image_form.alt_text }}
                 {% if image_form.alt_text.errors %}
                     <div class="mt-1 text-sm text-red-600">{{ image_form.alt_text.errors }}</div>
@@ -45,7 +45,7 @@
 
         {% if package.image_object and package.image_object.alt_text %}
             <div class="mt-3 text-sm text-slate-500">
-                Alt: {{ package.image_object.alt_text }}
+                Альтернативный текст: {{ package.image_object.alt_text }}
             </div>
         {% endif %}
     {% endif %}

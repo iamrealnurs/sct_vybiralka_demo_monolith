@@ -13,37 +13,37 @@
     {% if mode == "detail" %}
         <div class="mt-5 space-y-3 text-sm">
             <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-500">Base price</span>
+                <span class="text-slate-500">Базовая сумма</span>
                 <span class="font-medium text-slate-900">{{ package.base_price }}</span>
             </div>
 
             <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-500">Line discount amount</span>
+                <span class="text-slate-500">Скидка по строкам</span>
                 <span class="font-medium text-red-600">- {{ package.line_discount_amount }}</span>
             </div>
 
             <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-500">Subtotal after line discounts</span>
+                <span class="text-slate-500">Сумма после строковых скидок</span>
                 <span class="font-medium text-slate-900">{{ package.subtotal_after_line_discounts }}</span>
             </div>
 
             <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-500">Package discount amount</span>
+                <span class="text-slate-500">Скидка пакета</span>
                 <span class="font-medium text-red-600">- {{ package.package_discount_amount }}</span>
             </div>
 
             <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-500">Regular price</span>
+                <span class="text-slate-500">Обычная цена</span>
                 <span class="font-medium text-slate-900">{{ package.regular_price }}</span>
             </div>
 
             <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-500">Promo price</span>
+                <span class="text-slate-500">Цена по акции</span>
                 <span class="font-medium text-slate-900">{{ package.promo_price }}</span>
             </div>
 
-            <div class="border-t border-slate-200 pt-3 flex items-center justify-between gap-3">
-                <span class="font-semibold text-slate-700">Final price</span>
+            <div class="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                <span class="font-semibold text-slate-700">Итоговая цена</span>
                 <span class="text-lg font-bold text-slate-900">{{ package.final_price }}</span>
             </div>
         </div>

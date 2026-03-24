@@ -25,7 +25,6 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- KPI -->
     <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="text-sm text-slate-500">Всего пакетов</div>
@@ -48,7 +47,6 @@
         </div>
     </section>
 
-    <!-- Filters -->
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <form method="get" class="grid grid-cols-1 gap-4 lg:grid-cols-6">
             <div class="lg:col-span-2">
@@ -139,7 +137,7 @@
                 </select>
             </div>
 
-            <div class="lg:col-span-6 flex flex-wrap items-center gap-2 pt-2">
+            <div class="flex flex-wrap items-center gap-2 pt-2 lg:col-span-6">
                 <button type="submit" class="staff-btn-primary">
                     Применить
                 </button>
@@ -151,9 +149,8 @@
         </form>
     </section>
 
-    <!-- Table -->
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto thin-scrollbar">
+        <div class="thin-scrollbar overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="border-b border-slate-200 bg-slate-50">
                     <tr class="text-left text-slate-600">
@@ -183,11 +180,11 @@
                                         <img
                                             src="{{ row.image_url }}"
                                             alt="{{ row.package.public_title|default:row.package.display_title }}"
-                                            class="h-14 w-14 rounded-xl object-cover border border-slate-200"
+                                            class="h-14 w-14 rounded-xl border border-slate-200 object-cover"
                                         >
                                     {% else %}
                                         <div class="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
-                                            no img
+                                            нет фото
                                         </div>
                                     {% endif %}
 
@@ -247,23 +244,23 @@
                             <td class="px-4 py-4">
                                 <div class="space-y-1 text-xs">
                                     <div class="flex items-center justify-between gap-3">
-                                        <span class="text-slate-500">Base</span>
+                                        <span class="text-slate-500">Базовая сумма</span>
                                         <span class="font-medium text-slate-900">{{ row.base_price }}</span>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <span class="text-slate-500">Line discount</span>
+                                        <span class="text-slate-500">Скидка по строкам</span>
                                         <span class="font-medium text-red-600">- {{ row.line_discount_amount }}</span>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <span class="text-slate-500">Regular</span>
+                                        <span class="text-slate-500">Сумма после строк</span>
                                         <span class="font-medium text-slate-900">{{ row.regular_price }}</span>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <span class="text-slate-500">Package discount</span>
+                                        <span class="text-slate-500">Скидка пакета</span>
                                         <span class="font-medium text-red-600">- {{ row.package_discount_amount }}</span>
                                     </div>
                                     <div class="mt-2 flex items-center justify-between gap-3 border-t border-slate-200 pt-2">
-                                        <span class="font-semibold text-slate-700">Final</span>
+                                        <span class="font-semibold text-slate-700">Итог</span>
                                         <span class="text-sm font-bold text-slate-900">{{ row.final_price }}</span>
                                     </div>
                                 </div>
@@ -329,7 +326,6 @@
         </div>
     </section>
 
-    <!-- Pagination -->
     {% if page_obj.paginator.num_pages > 1 %}
         <section class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div class="text-sm text-slate-500">
