@@ -3,12 +3,25 @@ import subprocess
 
 # Определяем пути к файлам
 file_paths = [
+    "src/settings.py",
     "main/models.py",
     "cars/models.py",
     "catalog/models.py",
     "client/models.py",
-    "datagen_data/datagen.py",
-    "datagen_data/script.py",
+    "api/staff/forms.py",
+    "api/staff/services.py",
+    "api/staff/urls.py",
+    "api/staff/views.py",
+    "templates/staff/base.html",
+    "templates/staff/packages/create.html",
+    "templates/staff/packages/detail.html",
+    "templates/staff/packages/edit.html",
+    "templates/staff/packages/_image_card.html",
+    "templates/staff/packages/list.html",
+    "templates/staff/packages/_page_header.html",
+    "templates/staff/packages/_price_summary.html",
+    "templates/staff/packages/_promo_card.html",
+    "templates/staff/packages/_vehicle_card.html",
 ]
 
 # Путь к файлу, который мы создаем

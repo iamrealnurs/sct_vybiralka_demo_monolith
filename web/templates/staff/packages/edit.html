@@ -199,6 +199,102 @@
                 </section>
 
                 <section class="staff-card p-5">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">Категории элементов пакета</h2>
+                            <p class="mt-1 text-sm text-slate-500">
+                                Сначала создай хотя бы одну категорию, потом уже добавляй товары и услуги в состав пакета.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            id="add-item-category-row-btn"
+                            class="staff-btn-secondary"
+                        >
+                            Добавить категорию
+                        </button>
+                    </div>
+
+                    <input
+                        type="hidden"
+                        id="item-categories-total-forms"
+                        name="item_categories-TOTAL_FORMS"
+                        value="{{ package_item_categories|length }}"
+                    >
+
+                    <div class="thin-scrollbar overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-slate-200 bg-slate-50">
+                                <tr class="text-left text-slate-600">
+                                    <th class="px-3 py-2 font-semibold">Название</th>
+                                    <th class="px-3 py-2 font-semibold">Описание</th>
+                                    <th class="px-3 py-2 font-semibold">Порядок</th>
+                                    <th class="px-3 py-2 font-semibold">Активна</th>
+                                    <th class="px-3 py-2 font-semibold">Удалить</th>
+                                </tr>
+                            </thead>
+                            <tbody id="item-categories-table-body" class="divide-y divide-slate-200">
+                                {% for cat in package_item_categories %}
+                                    <tr class="align-top">
+                                        <td class="px-3 py-3">
+                                            <input type="hidden" name="item_categories-{{ forloop.counter0 }}-id" value="{{ cat.id }}">
+                                            <input
+                                                type="text"
+                                                name="item_categories-{{ forloop.counter0 }}-name"
+                                                value="{{ cat.name }}"
+                                                class="staff-input"
+                                                placeholder="Например: Основные материалы"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <textarea
+                                                name="item_categories-{{ forloop.counter0 }}-description"
+                                                rows="2"
+                                                class="staff-textarea"
+                                                placeholder="Краткое описание категории"
+                                            >{{ cat.description }}</textarea>
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                name="item_categories-{{ forloop.counter0 }}-sort_order"
+                                                value="{{ cat.sort_order }}"
+                                                class="staff-input w-24"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                name="item_categories-{{ forloop.counter0 }}-is_active"
+                                                class="h-4 w-4 rounded border-slate-300"
+                                                {% if cat.is_active %}checked{% endif %}
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                name="item_categories-{{ forloop.counter0 }}-is_deleted"
+                                                class="h-4 w-4 rounded border-slate-300"
+                                            >
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="mt-3 text-xs text-slate-500">
+                        Категории здесь принадлежат только текущему пакету. После сохранения они появятся в выпадающем списке строк состава.
+                    </p>
+                </section>
+
+                <section class="staff-card p-5">
                     <div class="mb-4 flex items-start justify-between gap-4">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-900">Состав пакета</h2>
@@ -211,10 +307,17 @@
                             type="button"
                             id="add-item-row-btn"
                             class="staff-btn-secondary"
+                            {% if not package_item_categories %}disabled{% endif %}
                         >
                             Добавить строку
                         </button>
                     </div>
+
+                    {% if not package_item_categories %}
+                        <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            Сначала добавь и сохрани хотя бы одну категорию элементов пакета. После этого в строках состава появится выпадающий список категорий.
+                        </div>
+                    {% endif %}
 
                     <input type="hidden" name="items-TOTAL_FORMS" id="items-total-forms" value="{{ package_items|length }}">
 
@@ -449,11 +552,78 @@
 {% block scripts %}
 <script>
     (function () {
+        const categoryAddBtn = document.getElementById("add-item-category-row-btn");
+        const categoryTbody = document.getElementById("item-categories-table-body");
+        const categoryTotalFormsInput = document.getElementById("item-categories-total-forms");
+
+        if (categoryAddBtn && categoryTbody && categoryTotalFormsInput) {
+            categoryAddBtn.addEventListener("click", function () {
+                const index = Number(categoryTotalFormsInput.value || "0");
+
+                const tr = document.createElement("tr");
+                tr.className = "align-top";
+                tr.innerHTML = `
+                    <td class="px-3 py-3">
+                        <input type="hidden" name="item_categories-${index}-id" value="">
+                        <input
+                            type="text"
+                            name="item_categories-${index}-name"
+                            value=""
+                            class="staff-input"
+                            placeholder="Например: Основные материалы"
+                        >
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <textarea
+                            name="item_categories-${index}-description"
+                            rows="2"
+                            class="staff-textarea"
+                            placeholder="Краткое описание категории"
+                        ></textarea>
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <input
+                            type="number"
+                            min="0"
+                            name="item_categories-${index}-sort_order"
+                            value="${index}"
+                            class="staff-input w-24"
+                        >
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <input
+                            type="checkbox"
+                            name="item_categories-${index}-is_active"
+                            class="h-4 w-4 rounded border-slate-300"
+                            checked
+                        >
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <input
+                            type="checkbox"
+                            name="item_categories-${index}-is_deleted"
+                            class="h-4 w-4 rounded border-slate-300"
+                        >
+                    </td>
+                `;
+
+                categoryTbody.appendChild(tr);
+                categoryTotalFormsInput.value = String(index + 1);
+            });
+        }
+    })();
+
+    (function () {
         const addBtn = document.getElementById("add-item-row-btn");
         const tbody = document.getElementById("items-table-body");
         const totalFormsInput = document.getElementById("items-total-forms");
 
         if (!addBtn || !tbody || !totalFormsInput) return;
+        if (addBtn.hasAttribute("disabled")) return;
 
         const categoryOptions = `
             <option value="">Выбери категорию</option>

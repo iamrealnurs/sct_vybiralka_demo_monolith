@@ -84,6 +84,17 @@ class PackageEditContext:
     active_items_count: int
 
 
+@dataclass(slots=True)
+class PackageItemCategoryInput:
+    category_id: int | None
+    row_index: int
+    name: str
+    description: str
+    sort_order: int
+    is_active: bool
+    is_deleted: bool
+
+
 def quantize_money(value: Decimal | int | float | None) -> Decimal:
     if value is None:
         return ZERO
@@ -574,6 +585,124 @@ def parse_package_items_from_post(post_data) -> list[PackageItemInput]:
     return result
 
 
+def parse_package_item_categories_from_post(post_data) -> list[PackageItemCategoryInput]:
+    total_forms_raw = post_data.get("item_categories-TOTAL_FORMS", "0")
+    try:
+        total_forms = int(total_forms_raw)
+    except (TypeError, ValueError):
+        total_forms = 0
+
+    result: list[PackageItemCategoryInput] = []
+
+    for i in range(total_forms):
+        errors: list[str] = []
+
+        category_id = _parse_int(
+            post_data.get(f"item_categories-{i}-id"),
+            "ID категории",
+            errors,
+            i,
+        )
+        sort_order = _parse_int(
+            post_data.get(f"item_categories-{i}-sort_order"),
+            "Порядок категории",
+            errors,
+            i,
+        )
+
+        name = (post_data.get(f"item_categories-{i}-name") or "").strip()
+        description = (post_data.get(f"item_categories-{i}-description") or "").strip()
+        is_active = post_data.get(f"item_categories-{i}-is_active") == "on"
+        is_deleted = post_data.get(f"item_categories-{i}-is_deleted") == "on"
+
+        if not is_deleted and not name:
+            errors.append(f"Категория #{i + 1}: нужно указать название категории.")
+
+        if sort_order is not None and sort_order < 0:
+            errors.append(f"Категория #{i + 1}: sort_order не может быть отрицательным.")
+
+        if errors:
+            raise ValidationError(errors)
+
+        result.append(
+            PackageItemCategoryInput(
+                category_id=category_id,
+                row_index=i,
+                name=name,
+                description=description,
+                sort_order=sort_order or i,
+                is_active=is_active,
+                is_deleted=is_deleted,
+            )
+        )
+
+    return result
+
+
+def validate_package_item_categories(
+    package: CarServicePackage,
+    categories_data: list[PackageItemCategoryInput],
+) -> None:
+    errors: list[str] = []
+
+    existing_ids = set(
+        PackageItemCategory.objects.filter(package=package).values_list("id", flat=True)
+    )
+
+    seen_names: set[str] = set()
+
+    for row in categories_data:
+        if row.category_id is not None and row.category_id not in existing_ids:
+            errors.append(
+                f"Категория #{row.row_index + 1}: категория не принадлежит текущему пакету."
+            )
+
+        if row.is_deleted:
+            continue
+
+        normalized_name = row.name.strip().casefold()
+        if normalized_name in seen_names:
+            errors.append(
+                f"Категория #{row.row_index + 1}: название категории должно быть уникальным внутри пакета."
+            )
+        seen_names.add(normalized_name)
+
+    if errors:
+        raise ValidationError(errors)
+
+
+def save_package_item_categories(
+    package: CarServicePackage,
+    categories_data: list[PackageItemCategoryInput],
+) -> dict[int, PackageItemCategory]:
+    existing_categories = {
+        category.id: category
+        for category in PackageItemCategory.objects.filter(package=package)
+    }
+
+    saved_categories: dict[int, PackageItemCategory] = {}
+
+    for row in categories_data:
+        if row.category_id and row.category_id in existing_categories:
+            category = existing_categories[row.category_id]
+        else:
+            category = PackageItemCategory(package=package)
+
+        category.name = row.name
+        category.description = row.description
+        category.sort_order = row.sort_order
+        category.is_active = row.is_active
+        category.is_deleted = row.is_deleted
+
+        category.full_clean()
+        category.save()
+
+        if not category.is_deleted:
+            saved_categories[category.id] = category
+
+    return saved_categories
+
+
 def validate_package_items(
     package: CarServicePackage,
     items_data: list[PackageItemInput],
@@ -693,10 +822,21 @@ def save_package_update(
     form,
     package: CarServicePackage,
     items_data: list[PackageItemInput],
+    categories_data: list[PackageItemCategoryInput],
 ) -> CarServicePackage:
     updated_package = form.save()
     updated_package.full_clean()
     updated_package.save()
+
+    validate_package_item_categories(
+        package=updated_package,
+        categories_data=categories_data,
+    )
+
+    save_package_item_categories(
+        package=updated_package,
+        categories_data=categories_data,
+    )
 
     validate_package_items(
         package=updated_package,
@@ -710,4 +850,6 @@ def save_package_update(
     )
 
     return updated_package
+
+
 

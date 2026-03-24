@@ -21,6 +21,7 @@ from .services import (
     get_package_list_data,
     parse_package_items_from_post,
     save_package_update,
+    parse_package_item_categories_from_post,
 )
 
 
@@ -236,6 +237,7 @@ class StaffPackageUpdateView(LoginRequiredMixin, View):
         form = StaffPackageUpdateForm(request.POST, instance=package)
 
         try:
+            categories_data = parse_package_item_categories_from_post(request.POST)
             items_data = parse_package_items_from_post(request.POST)
         except ValidationError as exc:
             for error in exc.messages:
@@ -252,6 +254,7 @@ class StaffPackageUpdateView(LoginRequiredMixin, View):
                 form=form,
                 package=package,
                 items_data=items_data,
+                categories_data=categories_data,
             )
         except ValidationError as exc:
             for error in exc.messages:
@@ -267,6 +270,5 @@ class StaffPackageUpdateView(LoginRequiredMixin, View):
         if action == "save_view":
             return redirect("staff:package_detail", package_id=updated_package.pk)
         return redirect("staff:package_edit", package_id=updated_package.pk)
-
 
 
