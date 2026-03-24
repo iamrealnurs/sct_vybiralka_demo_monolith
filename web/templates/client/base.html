@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SCT Drive{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root { color-scheme: light; }
+        body { background: #f8fafc; }
+
+        /* Стили для форм (совместимость с ClientTailwindMixin) */
+        .staff-input, .staff-select, .staff-textarea {
+            width: 100%;
+            border: 1px solid rgb(203 213 225);
+            border-radius: 0.75rem;
+            padding: 0.65rem 0.85rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            outline: none;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .staff-input:focus, .staff-select:focus, .staff-textarea:focus {
+            border-color: rgb(79 70 229);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .staff-label {
+            display: block;
+            margin-bottom: 0.375rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            font-weight: 500;
+            color: rgb(51 65 85);
+        }
+
+        /* Кнопки */
+        .btn-primary {
+            @apply inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all;
+        }
+        
+        .btn-secondary {
+            @apply inline-flex items-center justify-center rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all;
+        }
+
+        /* Утилиты */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .thin-scrollbar::-webkit-scrollbar { width: 6px; }
+        .thin-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen text-slate-900 font-sans">
+
+    <nav class="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex h-16 items-center justify-between">
+                <div class="flex items-center gap-8">
+                    <a href="{% url 'client:dashboard' %}" class="text-xl font-black tracking-tighter text-slate-900">
+                        SCT <span class="text-indigo-600">DRIVE</span>
+                    </a>
+                    
+                    <div class="hidden md:flex items-center gap-1">
+                        <a href="{% url 'client:dashboard' %}" 
+                           class="px-4 py-2 rounded-xl text-sm font-bold transition-colors {% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-50 text-indigo-600{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                            Главная
+                        </a>
+                        <a href="{% url 'client:garage_list' %}" 
+                           class="px-4 py-2 rounded-xl text-sm font-bold transition-colors {% if 'garage' in request.path %}bg-indigo-50 text-indigo-600{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                            Мой гараж
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex flex-col items-end">
+                        <span class="text-xs font-bold text-slate-900">{{ request.user.email }}</span>
+                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Клиент</span>
+                    </div>
+                    <form action="{% url 'client:logout' %}" method="post" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all" title="Выйти">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        {% if messages %}
+            <div class="mb-6 space-y-3">
+                {% for message in messages %}
+                    <div class="rounded-2xl border p-4 text-sm font-medium flex items-center gap-3 animate-in slide-in-from-top-2 duration-300
+                        {% if message.tags == 'success' %}
+                            border-emerald-200 bg-emerald-50 text-emerald-800
+                        {% elif message.tags == 'error' %}
+                            border-rose-200 bg-rose-50 text-rose-800
+                        {% else %}
+                            border-slate-200 bg-slate-50 text-slate-700
+                        {% endif %}
+                    ">
+                        {% if message.tags == 'success' %}
+                            <svg class="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mt-auto py-8 border-t border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                &copy; 2026 SCT Service — Demo MVP
+            </p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

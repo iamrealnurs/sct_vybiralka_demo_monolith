@@ -3,31 +3,13 @@ import subprocess
 
 # Определяем пути к файлам
 file_paths = [
-    "src/urls.py",
-    "src/settings.py",
     "main/models.py",
     "cars/models.py",
     "catalog/models.py",
     "client/models.py",
-    "api/staff/packages/forms.py",
-    "api/staff/packages/services.py",
-    "api/staff/packages/urls.py",
-    "api/staff/packages/views.py",
-    "api/staff/cars/services.py",
-    "api/staff/cars/urls.py",
-    "api/staff/cars/views.py",
-    "templates/staff/base.html",
-    "templates/staff/packages/create.html",
-    "templates/staff/packages/detail.html",
-    "templates/staff/packages/edit.html",
-    "templates/staff/packages/_image_card.html",
-    "templates/staff/packages/list.html",
-    "templates/staff/packages/_page_header.html",
-    "templates/staff/packages/_price_summary.html",
-    "templates/staff/packages/_promo_card.html",
-    "templates/staff/packages/_vehicle_card.html",
-    "templates/staff/cars/list.html",
-    "templates/staff/cars/detail.html",
+    "datagen_data/data_upload.py",
+    "datagen_data/script.py",
+    "datagen_data/generate_demo_packages.py",
 ]
 
 output_file = "datagen_data/prompts/api/prompt_api.txt"

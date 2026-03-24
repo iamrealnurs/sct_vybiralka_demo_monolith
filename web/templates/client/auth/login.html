@@ -1,0 +1,92 @@
+{% extends "client/base.html" %}
+
+{% block title %}Вход в SCT Drive{% endblock %}
+
+{# Переопределяем блок контента, чтобы сделать центрированную форму без лишних элементов #}
+{% block content %}
+<div class="min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    
+    <div class="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-500">
+        
+        {# Логотип и заголовок #}
+        <div class="text-center">
+            <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-200 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            </div>
+            <h2 class="text-3xl font-black text-slate-900 tracking-tight">SCT DRIVE</h2>
+            <p class="mt-2 text-sm text-slate-500 font-medium">Добро пожаловать в личный кабинет владельца</p>
+        </div>
+
+        {# Карточка с формой #}
+        <div class="glass-card rounded-[32px] p-8 shadow-sm border border-slate-200 bg-white">
+            <form class="space-y-6" method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="rounded-xl bg-rose-50 border border-rose-100 p-3 text-sm text-rose-600 font-medium">
+                        {{ form.non_field_errors|first }}
+                    </div>
+                {% endif %}
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="{{ form.username.id_for_label }}" class="staff-label">
+                            {{ form.username.label }}
+                        </label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <p class="mt-1 text-xs text-rose-500 font-bold">{{ form.username.errors|first }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <label for="{{ form.password.id_for_label }}" class="staff-label">
+                                {{ form.password.label }}
+                            </label>
+                            <a href="#" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline">
+                                Забыли пароль?
+                            </a>
+                        </div>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <p class="mt-1 text-xs text-rose-500 font-bold">{{ form.password.errors|first }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex items-center">
+                    <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded">
+                    <label for="remember-me" class="ml-2 block text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer">
+                        Запомнить меня
+                    </label>
+                </div>
+
+                <div>
+                    <button type="submit" class="btn-primary w-full py-4 text-base shadow-indigo-100 group">
+                        Войти в систему
+                        <svg class="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {# Подвал входа #}
+        <p class="text-center text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">
+            Нет аккаунта? 
+            <a href="#" class="text-indigo-600 hover:text-indigo-500 ml-1">Зарегистрироваться</a>
+        </p>
+
+    </div>
+</div>
+
+{# Скрываем стандартную навигацию на странице логина для чистоты кадра #}
+<style>
+    nav { display: none !important; }
+    footer { border: none !important; }
+</style>
+{% endblock %}

@@ -106,7 +106,7 @@ class ClientCar(TimestampedModel):
     # Зачем:
     #   гараж принадлежит конкретному клиенту
     client = models.ForeignKey(
-        Client,
+        'main.User',  # Привязываем к базовому User
         on_delete=models.CASCADE,
         related_name="cars",
         verbose_name=_("клиент"),

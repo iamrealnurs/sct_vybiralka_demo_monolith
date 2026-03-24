@@ -7,12 +7,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 admin_url = settings.ADMIN_URL
 
 urlpatterns = [
-    # path('', include('cars.urls')),
     path('api/', include('api.urls')),
     path(f'{admin_url}/', admin.site.urls),
     path('api/', include('rest_framework.urls')),
     path('rosetta/', include('rosetta.urls')),
     path('', include('api.staff.urls')),
+    path('client/', include('api.client.urls', namespace='client')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
@@ -26,3 +26,4 @@ if settings.DEBUG:
         urlpatterns.append(path('silk/', include('silk.urls', namespace='silk')))
     if settings.ENABLE_DEBUG_TOOLBAR:
         urlpatterns.append(path('__debug__/', include('debug_toolbar.urls')))
+
