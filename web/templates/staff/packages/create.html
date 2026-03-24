@@ -500,6 +500,7 @@
             return params.toString();
         }
 
+
         function fillSelect(select, options, selectedValue, placeholder) {
             if (!select) return;
             const normVal = normalizeOptionValue(selectedValue);
@@ -507,14 +508,26 @@
             select.innerHTML = `<option value="">${placeholder}</option>`;
 
             rows.forEach((opt) => {
-                const val = normalizeOptionValue(opt.id ?? opt.value ?? opt.powertrain_type ?? opt.drive_type ?? opt.transmission_type);
-                const lbl = String(opt.name ?? opt.label ?? opt.value ?? opt.code ?? val);
+                // Если opt это строка (как для двигателя), используем её саму. 
+                // Если объект (как для марки), ищем ID или значение.
+                let val, lbl;
+                
+                if (typeof opt === 'string') {
+                    val = opt;
+                    lbl = opt;
+                } else {
+                    val = normalizeOptionValue(opt.id ?? opt.value ?? opt.powertrain_type ?? opt.drive_type ?? opt.transmission_type);
+                    lbl = String(opt.name ?? opt.label ?? opt.value ?? opt.code ?? val);
+                }
+                
                 const sel = val === normVal ? " selected" : "";
                 select.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(val)}"${sel}>${escapeHtml(lbl)}</option>`);
             });
             select.disabled = (rows.length === 0 && select !== markSelect);
         }
 
+
+        
         function renderResults(results) {
             const rows = Array.isArray(results) ? results : [];
             resultsCount.textContent = String(rows.length);
