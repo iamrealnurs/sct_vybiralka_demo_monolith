@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Staff{% endblock %}</title>
 
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        /* Настройка под ваш дизайн, чтобы инпут не выбивался из стиля Tailwind */
+        .ts-control { 
+            border-radius: 0.75rem !important; 
+            padding: 0.5rem 0.85rem !important;
+            border: 1px solid rgb(203 213 225) !important;
+        }
+        .ts-wrapper.focus .ts-control {
+            border-color: rgb(79 70 229) !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+        }
+    </style>
+
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -219,5 +233,7 @@
     </div>
 
     {% block scripts %}{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 </body>
 </html>

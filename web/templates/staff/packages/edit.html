@@ -2,6 +2,28 @@
 
 {% block title %}{{ page_title }}{% endblock %}
 
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+    /* Стили для интеграции Tom Select в ваш дизайн на Tailwind */
+    .ts-wrapper .ts-control {
+        border-radius: 0.75rem !important;
+        padding: 0.5rem 0.85rem !important;
+        border: 1px solid rgb(203 213 225) !important;
+        background-image: none !important; /* Убираем стандартную стрелочку, если мешает */
+    }
+    .ts-wrapper.focus .ts-control {
+        border-color: rgb(100 116 139) !important;
+        box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15) !important;
+    }
+    .ts-dropdown {
+        border-radius: 0.75rem !important;
+        margin-top: 5px !important;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+    }
+</style>
+{% endblock %}
+
 {% block page_header %}
     {% include "staff/packages/_page_header.html" with breadcrumbs=breadcrumbs title=page_title subtitle=package.display_title %}
 {% endblock %}
@@ -351,7 +373,7 @@
                                         </td>
 
                                         <td class="px-3 py-3">
-                                            <select name="items-{{ forloop.counter0 }}-nomenclature_item_id" class="staff-select">
+                                            <select name="items-{{ forloop.counter0 }}-nomenclature_item_id" class="staff-select js-nomenclature-select">
                                                 <option value="">Выбери номенклатуру</option>
                                                 {% for nom in nomenclature_items %}
                                                     <option value="{{ nom.id }}" {% if item.nomenclature_item_id == nom.id %}selected{% endif %}>
@@ -550,7 +572,24 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
 <script>
+    /**
+     * Инициализация автокомплита для выпадающего списка номенклатуры
+     */
+    function initNomenclatureAutocomplete(element) {
+        if (!element || element.classList.contains('tomselected')) return;
+        
+        new TomSelect(element, {
+            create: false,
+            sortField: { field: "text", order: "asc" },
+            placeholder: "Поиск по названию или артикулу...",
+            allowEmptyOption: true,
+            maxOptions: 100
+        });
+    }
+
     (function () {
         const categoryAddBtn = document.getElementById("add-item-category-row-btn");
         const categoryTbody = document.getElementById("item-categories-table-body");
@@ -653,7 +692,7 @@
                 </td>
 
                 <td class="px-3 py-3">
-                    <select name="items-${index}-nomenclature_item_id" class="staff-select">
+                    <select name="items-${index}-nomenclature_item_id" class="staff-select js-nomenclature-select">
                         ${nomenclatureOptions}
                     </select>
                 </td>
@@ -714,7 +753,17 @@
 
             tbody.appendChild(tr);
             totalFormsInput.value = String(index + 1);
+
+            // Инициализируем Tom Select для только что созданной строки
+            const newSelect = tr.querySelector('.js-nomenclature-select');
+            initNomenclatureAutocomplete(newSelect);
         });
+
+        // Первичная инициализация Tom Select для существующих строк при загрузке страницы
+        document.querySelectorAll('.js-nomenclature-select').forEach(select => {
+            initNomenclatureAutocomplete(select);
+        });
+
     })();
 </script>
 {% endblock %}
