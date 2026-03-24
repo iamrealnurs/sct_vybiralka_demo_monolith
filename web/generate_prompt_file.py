@@ -3,6 +3,7 @@ import subprocess
 
 # Определяем пути к файлам
 file_paths = [
+    "src/urls.py",
     "src/settings.py",
     "main/models.py",
     "cars/models.py",
