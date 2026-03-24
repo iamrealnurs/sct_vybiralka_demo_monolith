@@ -381,7 +381,7 @@ class StaffPackageCreateView(LoginRequiredMixin, View):
             "vehicle_selector_preview_json": vehicle_selector["preview_json"],
             "breadcrumbs": [
                 {"label": "Staff", "url": None},
-                {"label": "Packages", "url": reverse("staff:package_list")},
+                {"label": "Packages", "url": reverse("staff:packages:package_list")},
                 {"label": "Create", "url": None},
             ],
         }
@@ -414,9 +414,9 @@ class StaffPackageCreateView(LoginRequiredMixin, View):
             action = request.POST.get("action") or "save"
 
             if action == "save_open":
-                return redirect("staff:package_detail", package_id=package.id)
+                return redirect("staff:packages:package_detail", package_id=package.id)
 
-            return redirect("staff:package_list")
+            return redirect("staff:packages:package_list")
 
         context = self.get_context_data(
             request=request,
@@ -465,7 +465,7 @@ class StaffPackageDetailView(LoginRequiredMixin, View):
             "grouped_items": grouped_items,
             "breadcrumbs": [
                 {"label": "Staff", "url": None},
-                {"label": "Packages", "url": reverse("staff:package_list")},
+                {"label": "Packages", "url": reverse("staff:packages:package_list")},
                 {"label": f"#{package.id}", "url": None},
             ],
             "status_tone": status_tone,
@@ -514,8 +514,8 @@ class StaffPackageUpdateView(LoginRequiredMixin, View):
             "vehicle_selector_preview_json": vehicle_selector["preview_json"],
             "breadcrumbs": [
                 {"label": "Staff", "url": None},
-                {"label": "Packages", "url": reverse("staff:package_list")},
-                {"label": f"#{package.pk}", "url": reverse("staff:package_detail", args=[package.pk])},
+                {"label": "Packages", "url": reverse("staff:packages:package_list")},
+                {"label": f"#{package.pk}", "url": reverse("staff:packages:package_detail", args=[package.pk])},
                 {"label": "Edit", "url": None},
             ],
             "page_title": f"Редактирование пакета #{package.pk}",
@@ -577,10 +577,10 @@ class StaffPackageUpdateView(LoginRequiredMixin, View):
 
         action = request.POST.get("_action", "save_continue")
         if action == "save":
-            return redirect("staff:package_list")
+            return redirect("staff:packages:package_list")
         if action == "save_view":
-            return redirect("staff:package_detail", package_id=updated_package.pk)
-        return redirect("staff:package_edit", package_id=updated_package.pk)
+            return redirect("staff:packages:package_detail", package_id=updated_package.pk)
+        return redirect("staff:packages:package_edit", package_id=updated_package.pk)
 
 
 

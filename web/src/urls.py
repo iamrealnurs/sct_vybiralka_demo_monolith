@@ -7,12 +7,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 admin_url = settings.ADMIN_URL
 
 urlpatterns = [
-    path('', include('cars.urls')),
+    # path('', include('cars.urls')),
     path('api/', include('api.urls')),
     path(f'{admin_url}/', admin.site.urls),
     path('api/', include('rest_framework.urls')),
     path('rosetta/', include('rosetta.urls')),
-    path('staff/', include('api.staff.urls')),
+    path('', include('api.staff.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]

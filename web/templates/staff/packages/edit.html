@@ -36,13 +36,13 @@
 
         <div class="flex flex-wrap items-center gap-2">
             <a
-                href="{% url 'staff:package_detail' package.id %}"
+                href="{% url 'staff:packages:package_detail' package.id %}"
                 class="staff-btn-secondary"
             >
                 Открыть карточку
             </a>
             <a
-                href="{% url 'staff:package_list' %}"
+                href="{% url 'staff:packages:package_list' %}"
                 class="staff-btn-secondary"
             >
                 Назад к списку
@@ -510,7 +510,7 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <a
-                        href="{% url 'staff:package_detail' package.id %}"
+                        href="{% url 'staff:packages:package_detail' package.id %}"
                         class="staff-btn-secondary"
                     >
                         Отмена

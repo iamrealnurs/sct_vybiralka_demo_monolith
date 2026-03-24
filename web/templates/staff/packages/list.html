@@ -13,10 +13,10 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-        <a href="{% url 'staff:package_list' %}" class="staff-btn-secondary">
+        <a href="{% url 'staff:packages:package_list' %}" class="staff-btn-secondary">
             Сбросить
         </a>
-        <a href="{% url 'staff:package_create' %}" class="staff-btn-primary">
+        <a href="{% url 'staff:packages:package_create' %}" class="staff-btn-primary">
             Создать пакет
         </a>
     </div>
@@ -142,7 +142,7 @@
                     Применить
                 </button>
 
-                <a href="{% url 'staff:package_list' %}" class="staff-btn-secondary">
+                <a href="{% url 'staff:packages:package_list' %}" class="staff-btn-secondary">
                     Очистить
                 </a>
             </div>
@@ -303,7 +303,7 @@
                             <td class="px-4 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <a
-                                        href="{% url 'staff:package_detail' row.package.id %}"
+                                        href="{% url 'staff:packages:package_detail' row.package.id %}"
                                         class="staff-btn-secondary"
                                     >
                                         Открыть
