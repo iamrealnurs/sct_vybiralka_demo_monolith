@@ -14,6 +14,7 @@ ALLOWED_HOSTS: list[str] = [host for host in os.environ.get('DJANGO_ALLOWED_HOST
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'https://backend.topcoder.kz'
 ]
 
 if DEBUG:
