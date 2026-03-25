@@ -20,11 +20,13 @@ services:
       - docker/prod/env/.data.env
       - path: .secrets.env
         required: false
+
   celery:
     extends:
       file: docker/modules/docker-compose.common.yml
       service: celery
     image: bandirom/django-template:${DOCKER_TAG:-latest}
+
   db:
     extends:
       file: docker/modules/docker-compose.common.yml
@@ -34,15 +36,37 @@ services:
       - ./docker/prod/db/pg.conf:/etc/postgresql/postgresql.conf
     env_file:
       - docker/prod/env/.db.env
+
   redis:
     extends:
       file: docker/modules/docker-compose.common.yml
       service: redis
 
+  nginx:
+    image: staticfloat/nginx-certbot
+    restart: "always"
+    container_name: nginx
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - ./docker/prod/nginx/certbot.conf:/etc/nginx/user.conf.d/nginx_template.conf:ro
+      - media_files:/web/media/:ro
+    environment:
+      CERTBOT_EMAIL: your@email.com
+      ENVSUBST_VARS: APP
+      APP: backend.topcoder.kz
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+    networks:
+      - separated_network
+
 volumes:
   media_files:
   postgres_data:
   postgres_socket:
+  letsencrypt:
 
 networks:
   separated_network:
