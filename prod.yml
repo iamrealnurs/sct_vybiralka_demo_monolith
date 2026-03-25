@@ -9,8 +9,9 @@ services:
       dockerfile: docker/prod/web/Dockerfile
     volumes:
       - media_files:/app/media/
+      - gunicorn_socket:/gunicorn_socket # ПРАВКА: Добавлен доступ к сокету
     ports:
-      - "8000:8000"
+      - "8000:8000" # ПРАВКА: Порты оставлены по вашему запросу
     environment:
       USE_HTTPS: 0
     env_file:
@@ -20,12 +21,16 @@ services:
       - docker/prod/env/.data.env
       - path: .secrets.env
         required: false
+    networks: # ПРАВКА: Добавлена сеть, чтобы nginx видел контейнер
+      - separated_network
 
   celery:
     extends:
       file: docker/modules/docker-compose.common.yml
       service: celery
     image: bandirom/django-template:${DOCKER_TAG:-latest}
+    networks: # ПРАВКА: Чтобы celery мог общаться с db и redis в этой сети
+      - separated_network
 
   db:
     extends:
@@ -36,11 +41,15 @@ services:
       - ./docker/prod/db/pg.conf:/etc/postgresql/postgresql.conf
     env_file:
       - docker/prod/env/.db.env
+    networks: # ПРАВКА: Добавлена сеть
+      - separated_network
 
   redis:
     extends:
       file: docker/modules/docker-compose.common.yml
       service: redis
+    networks: # ПРАВКА: Добавлена сеть
+      - separated_network
 
   nginx:
     image: staticfloat/nginx-certbot
@@ -50,6 +59,7 @@ services:
       - letsencrypt:/etc/letsencrypt
       - ./docker/prod/nginx/certbot.conf:/etc/nginx/user.conf.d/nginx_template.conf:ro
       - media_files:/web/media/:ro
+      - gunicorn_socket:/gunicorn_socket # ПРАВКА: Добавлен доступ к сокету бэкенда
     environment:
       CERTBOT_EMAIL: your@email.com
       ENVSUBST_VARS: APP
@@ -67,6 +77,7 @@ volumes:
   postgres_data:
   postgres_socket:
   letsencrypt:
+  gunicorn_socket: # ПРАВКА: Объявлен новый том для сокета
 
 networks:
   separated_network:
