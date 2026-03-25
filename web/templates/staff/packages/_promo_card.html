@@ -1,0 +1,99 @@
+<section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div>
+        <h2 class="text-lg font-semibold text-slate-900">
+            {{ card_title|default:"Акция" }}
+        </h2>
+        {% if card_subtitle %}
+            <p class="mt-1 text-sm text-slate-500">
+                {{ card_subtitle }}
+            </p>
+        {% endif %}
+    </div>
+
+    {% if mode == "form" %}
+        <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div class="md:col-span-2">
+                <label class="inline-flex cursor-pointer items-center gap-3">
+                    {{ form.is_promo }}
+                    <span class="text-sm font-medium text-slate-700">Пакет участвует в акции</span>
+                </label>
+                {% if form.is_promo.errors %}
+                    <div class="mt-1 text-sm text-red-600">{{ form.is_promo.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="staff-label" for="{{ form.promo_badge.id_for_label }}">Бейдж акции</label>
+                {{ form.promo_badge }}
+                {% if form.promo_badge.errors %}
+                    <div class="mt-1 text-sm text-red-600">{{ form.promo_badge.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="staff-label" for="{{ form.promo_text.id_for_label }}">Текст акции</label>
+                {{ form.promo_text }}
+                {% if form.promo_text.errors %}
+                    <div class="mt-1 text-sm text-red-600">{{ form.promo_text.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="staff-label" for="{{ form.promo_start_at.id_for_label }}">Начало акции</label>
+                {{ form.promo_start_at }}
+                {% if form.promo_start_at.errors %}
+                    <div class="mt-1 text-sm text-red-600">{{ form.promo_start_at.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="staff-label" for="{{ form.promo_end_at.id_for_label }}">Окончание акции</label>
+                {{ form.promo_end_at }}
+                {% if form.promo_end_at.errors %}
+                    <div class="mt-1 text-sm text-red-600">{{ form.promo_end_at.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+    {% else %}
+        {% if package.is_promo %}
+            <div class="mt-4 inline-flex rounded-full bg-fuchsia-100 px-3 py-1 text-sm font-medium text-fuchsia-700">
+                {{ package.promo_badge|default:"Акция" }}
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <div class="text-slate-500">Текст акции</div>
+                    <div class="mt-1 font-medium text-slate-900">
+                        {{ package.promo_text|default:"—" }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-slate-500">Начало акции</div>
+                    <div class="mt-1 font-medium text-slate-900">
+                        {{ package.promo_start_at|date:"d.m.Y H:i"|default:"—" }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-slate-500">Окончание акции</div>
+                    <div class="mt-1 font-medium text-slate-900">
+                        {{ package.promo_end_at|date:"d.m.Y H:i"|default:"—" }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-slate-500">Скидка пакета</div>
+                    <div class="mt-1 font-medium text-slate-900">
+                        {{ package.package_discount_percent }}%
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="mt-4 text-sm text-slate-500">
+                Пакет не участвует в акции.
+            </div>
+        {% endif %}
+    {% endif %}
+</section>

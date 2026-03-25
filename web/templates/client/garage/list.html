@@ -1,0 +1,132 @@
+{% extends "client/base.html" %}
+
+{% block title %}Мои автомобили — SCT Drive{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    {# Хедер страницы #}
+    <section class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Мой гараж</h1>
+            <p class="mt-1 text-slate-500 font-medium">Список всех ваших автомобилей, зарегистрированных в системе.</p>
+        </div>
+        <a href="{% url 'client:car_add' %}" class="btn-primary">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+            Добавить автомобиль
+        </a>
+    </section>
+
+    {# Список автомобилей #}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for car in cars %}
+            <div class="group relative bg-white border {% if car.is_primary %}border-indigo-200 ring-2 ring-indigo-50{% else %}border-slate-200{% endif %} rounded-[32px] overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50">
+                
+                <div class="flex flex-col sm:flex-row">
+                    {# Фото автомобиля #}
+                    <div class="sm:w-48 h-48 sm:h-auto relative bg-slate-100 overflow-hidden">
+                        {% if car.modification.photo %}
+                            <img src="{{ car.modification.photo.image.url }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                        {% else %}
+                            <div class="w-full h-full flex items-center justify-center text-slate-300">
+                                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                        {% endif %}
+                        
+                        {% if car.is_primary %}
+                            <div class="absolute top-3 left-3">
+                                <span class="px-2 py-1 rounded-lg bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest shadow-lg">
+                                    Активен
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Инфо об авто #}
+                    <div class="flex-1 p-6 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 leading-tight">
+                                        {{ car.modification.mark.name }} {{ car.modification.car_model.name }}
+                                    </h3>
+                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        {{ car.modification.name }}
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-block px-3 py-1 rounded-xl bg-slate-900 text-white font-mono text-sm font-bold">
+                                        {{ car.license_plate }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">Год выпуска</p>
+                                    <p class="text-sm font-bold text-slate-700">{{ car.year }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">Пробег</p>
+                                    <p class="text-sm font-bold text-slate-700">{{ car.mileage_km }} км</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Кнопки действий #}
+                        <div class="mt-6 pt-4 border-t border-slate-50 flex items-center gap-3">
+                            <a href="{% url 'client:car_detail' car.id %}" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">
+                                Подробнее
+                            </a>
+                            
+                            <div class="ml-auto">
+                                {% if not car.is_primary %}
+                                    <form action="{% url 'client:car_activate' car.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-xs font-black text-indigo-600 uppercase tracking-widest hover:underline">
+                                            Выбрать основным
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Используется
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            {# Состояние: нет машин #}
+            <div class="col-span-full py-20 text-center">
+                <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-4">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900">В вашем гараже еще нет машин</h3>
+                <p class="text-slate-500 mt-2">Добавьте свой автомобиль, чтобы мы могли подобрать для вас услуги.</p>
+                <div class="mt-8">
+                    <a href="{% url 'client:car_add' %}" class="btn-primary">Зарегистрировать авто</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Секция помощи (для демо) #}
+    <section class="rounded-3xl bg-indigo-900 p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
+        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="space-y-2">
+                <h2 class="text-2xl font-bold italic tracking-tight">Нужна помощь в подборе?</h2>
+                <p class="text-indigo-200 text-sm max-w-md">Если вы не можете найти свою модификацию или возникли проблемы с госномером — наш менеджер поможет вам в чате.</p>
+            </div>
+            <button class="px-8 py-3 rounded-2xl bg-white text-indigo-900 text-sm font-black uppercase tracking-widest hover:bg-indigo-50 transition-all">
+                Написать менеджеру
+            </button>
+        </div>
+        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+    </section>
+</div>
+{% endblock %}

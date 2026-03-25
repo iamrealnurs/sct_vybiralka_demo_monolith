@@ -1,0 +1,462 @@
+{% extends "staff/base.html" %}
+
+{% block title %}{{ package.display_title }}{% endblock %}
+
+{% block page_header %}
+    {% include "staff/packages/_page_header.html" with breadcrumbs=breadcrumbs title=package.display_title subtitle=package.slug status_label=package.get_status_display status_tone=status_tone %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'staff:packages:package_list' %}" class="staff-btn-secondary">
+            Назад к списку
+        </a>
+        <a href="{% url 'staff:packages:package_edit' package.id %}" class="staff-btn-secondary">
+            Редактировать
+        </a>
+        <button type="button" class="staff-btn-danger" disabled>
+            Удалить
+        </button>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div class="xl:col-span-8 space-y-6">
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Основная информация</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Базовые данные пакета, категория, slug и технические метаданные.
+                    </p>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+                    <div>
+                        <div class="text-slate-500">ID</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.id }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Slug</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.slug }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Внутреннее имя</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.name }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Публичный заголовок</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.public_title|default:"—" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Категория</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.category.name|default:"—" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Modification source ID</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.modification.source_id|default:"—" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Создан</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.created_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Обновлён</div>
+                        <div class="mt-1 font-medium text-slate-900">{{ package.updated_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+                </div>
+            </section>
+
+            {% include "staff/packages/_vehicle_card.html" with vehicle=vehicle card_title="Автомобиль" card_subtitle="Полная цепочка привязки пакета к модификации." %}
+
+            {% include "staff/packages/_promo_card.html" with mode="detail" package=package card_title="Акция" card_subtitle="Параметры акции и периода действия." %}
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Тексты</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Короткий, внутренний и публичный текст пакета.
+                    </p>
+                </div>
+
+                <div class="mt-5 space-y-4 text-sm">
+                    <div>
+                        <div class="text-slate-500">Короткое описание</div>
+                        <div class="mt-1 whitespace-pre-line text-slate-900">
+                            {{ package.description_short|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Внутреннее описание</div>
+                        <div class="mt-1 whitespace-pre-line text-slate-900">
+                            {{ package.description|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-500">Публичное описание</div>
+                        <div class="mt-1 whitespace-pre-line text-slate-900">
+                            {{ package.description_public|default:"—" }}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Категории состава пакета</h2>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Локальные категории, к которым привязаны строки пакета.
+                        </p>
+                    </div>
+
+                    <button type="button" class="staff-btn-secondary" disabled>
+                        Добавить категорию
+                    </button>
+                </div>
+
+                <div class="mt-5 space-y-4">
+                    {% for category in item_categories %}
+                        <article class="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-base font-semibold text-slate-900">
+                                            {{ category.name }}
+                                        </h3>
+
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                            sort: {{ category.sort_order }}
+                                        </span>
+
+                                        {% if category.is_active %}
+                                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                                Активна
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                Неактивна
+                                            </span>
+                                        {% endif %}
+
+                                        {% if category.items.count %}
+                                            <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
+                                                Заполнена
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                                Пустая
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <p class="mt-2 text-sm leading-6 text-slate-500">
+                                        {{ category.description|default:"Без описания" }}
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[280px]">
+                                    <div class="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                        <div class="text-xs text-slate-500">Позиций</div>
+                                        <div class="mt-1 text-sm font-semibold text-slate-900">
+                                            {{ category.items.count }}
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                        <div class="text-xs text-slate-500">Активных</div>
+                                        <div class="mt-1 text-sm font-semibold text-slate-900">
+                                            {{ category.active_items_count|default:"—" }}
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 col-span-2 sm:col-span-1">
+                                        <div class="text-xs text-slate-500">Сумма</div>
+                                        <div class="mt-1 text-sm font-semibold text-slate-900">
+                                            {{ category.total_amount|default:"—" }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if category.preview_items %}
+                                <div class="mt-4 border-t border-slate-200 pt-3">
+                                    <div class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                        Примеры позиций
+                                    </div>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        {% for preview_item in category.preview_items %}
+                                            <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                                                {{ preview_item }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </article>
+                    {% empty %}
+                        <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                            Категории состава ещё не добавлены.
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Состав пакета по категориям</h2>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Номенклатура сгруппирована по локальным категориям пакета.
+                        </p>
+                    </div>
+
+                    <button type="button" class="staff-btn-secondary" disabled>
+                        Добавить позицию
+                    </button>
+                </div>
+
+                <div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Категорий</div>
+                        <div class="mt-2 text-xl font-bold text-slate-900">{{ item_categories|length }}</div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Позиций</div>
+                        <div class="mt-2 text-xl font-bold text-slate-900">{{ package.items.count }}</div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Базовая сумма</div>
+                        <div class="mt-2 text-xl font-bold text-slate-900">{{ package.base_price }}</div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Итог</div>
+                        <div class="mt-2 text-xl font-bold text-slate-900">{{ package.final_price }}</div>
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-6">
+                    {% for group in grouped_items %}
+                        <section class="space-y-3">
+                            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-base font-semibold text-slate-900">{{ group.category.name }}</h3>
+
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                            {{ group.items|length }} поз.
+                                        </span>
+
+                                        {% if group.category.is_active %}
+                                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                                Активна
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                Неактивна
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if group.category.description %}
+                                        <p class="mt-2 text-sm text-slate-500">
+                                            {{ group.category.description }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[320px]">
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                        <div class="text-xs text-slate-500">Позиций</div>
+                                        <div class="mt-1 text-sm font-semibold text-slate-900">{{ group.items|length }}</div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                        <div class="text-xs text-slate-500">Скидки</div>
+                                        <div class="mt-1 text-sm font-semibold text-slate-900">{{ group.discount_total|default:"—" }}</div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 col-span-2 sm:col-span-1">
+                                        <div class="text-xs text-slate-500">Итог</div>
+                                        <div class="mt-1 text-sm font-semibold text-slate-900">{{ group.final_total|default:"—" }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="thin-scrollbar overflow-x-auto rounded-xl border border-slate-200">
+                                <table class="min-w-full text-sm">
+                                    <thead class="border-b border-slate-200 bg-slate-50">
+                                        <tr class="text-left text-slate-600">
+                                            <th class="px-4 py-3 font-semibold">Sort</th>
+                                            <th class="px-4 py-3 font-semibold">Артикул / название</th>
+                                            <th class="px-4 py-3 font-semibold">Тип</th>
+                                            <th class="px-4 py-3 font-semibold">Ед.</th>
+                                            <th class="px-4 py-3 font-semibold">Qty</th>
+                                            <th class="px-4 py-3 font-semibold">Цена</th>
+                                            <th class="px-4 py-3 font-semibold">Скидка</th>
+                                            <th class="px-4 py-3 font-semibold text-right">Итог</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody class="divide-y divide-slate-200">
+                                        {% for item in group.items %}
+                                            <tr class="align-top hover:bg-slate-50/80">
+                                                <td class="px-4 py-3 text-slate-600">
+                                                    {{ item.sort_order }}
+                                                </td>
+
+                                                <td class="px-4 py-3">
+                                                    <div class="font-medium text-slate-900">
+                                                        {{ item.article_snapshot|default:"—" }}
+                                                    </div>
+                                                    <div class="mt-1 text-sm text-slate-500">
+                                                        {{ item.name_snapshot|default:"—" }}
+                                                    </div>
+                                                </td>
+
+                                                <td class="px-4 py-3">
+                                                    {% if item.item_type_snapshot == "PRODUCT" %}
+                                                        <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
+                                                            Товар
+                                                        </span>
+                                                    {% elif item.item_type_snapshot == "SERVICE" %}
+                                                        <span class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
+                                                            Услуга
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                                            {{ item.item_type_snapshot|default:"—" }}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-slate-700">
+                                                    {{ item.unit_snapshot|default:"—" }}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-slate-700">
+                                                    {{ item.quantity }}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-slate-700">
+                                                    {{ item.current_unit_price|default:"—" }}
+                                                </td>
+
+                                                <td class="px-4 py-3">
+                                                    {% if item.discount_percent and item.discount_percent > 0 %}
+                                                        <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">
+                                                            {{ item.discount_percent }}%
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-slate-400">0%</span>
+                                                    {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-right">
+                                                    <div class="font-semibold text-slate-900">
+                                                        {{ item.final_line_total|default:"—" }}
+                                                    </div>
+                                                    {% if item.current_unit_price %}
+                                                        <div class="mt-1 text-xs text-slate-500">
+                                                            за ед.: {{ item.current_unit_price }}
+                                                        </div>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="8" class="px-4 py-6 text-center text-slate-500">
+                                                    В этой категории пока нет позиций.
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-end gap-3 text-sm">
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+                                    Позиций: <span class="font-semibold text-slate-900">{{ group.items|length }}</span>
+                                </div>
+
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+                                    Скидки: <span class="font-semibold text-slate-900">{{ group.discount_total|default:"—" }}</span>
+                                </div>
+
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+                                    Итог категории: <span class="font-semibold text-slate-900">{{ group.final_total|default:"—" }}</span>
+                                </div>
+                            </div>
+                        </section>
+                    {% empty %}
+                        <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                            Состав пакета пока не заполнен.
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>            
+
+
+        </div>
+
+        <div class="xl:col-span-4 space-y-6">
+            {% include "staff/packages/_image_card.html" with mode="detail" package=package card_title="Изображение" card_subtitle="Главная картинка пакета." %}
+
+            {% include "staff/packages/_price_summary.html" with mode="detail" package=package card_title="Сводка цен" card_subtitle="Все вычисляемые ценовые поля пакета." %}
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Client preview</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Упрощённое представление пакета так, как его может видеть клиент.
+                    </p>
+                </div>
+
+                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                    {% if package.image_url %}
+                        <img
+                            src="{{ package.image_url }}"
+                            alt="{{ package.display_title }}"
+                            class="h-48 w-full object-cover"
+                        >
+                    {% endif %}
+
+                    <div class="p-4">
+                        {% if package.is_promo %}
+                            <div class="inline-flex rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-medium text-fuchsia-700">
+                                {{ package.promo_badge|default:"Акция" }}
+                            </div>
+                        {% endif %}
+
+                        <h3 class="mt-3 text-lg font-semibold text-slate-900">
+                            {{ package.public_title|default:package.display_title }}
+                        </h3>
+
+                        <p class="mt-2 line-clamp-2 text-sm text-slate-500">
+                            {{ package.description_short|default:"Описание пока не заполнено." }}
+                        </p>
+
+                        <div class="mt-4 text-xl font-bold text-slate-900">
+                            {{ package.final_price }}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+</div>
+{% endblock %}

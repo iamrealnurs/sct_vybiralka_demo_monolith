@@ -1,0 +1,93 @@
+<section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div>
+        <h2 class="text-lg font-semibold text-slate-900">{{ card_title|default:"Сводка цен" }}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {{ card_subtitle|default:"Все вычисляемые ценовые поля пакета." }}
+        </p>
+    </div>
+
+    <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="space-y-3 text-sm">
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Базовая сумма</span>
+                <span class="font-medium text-slate-900">{{ package.base_price }} KZT</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Скидки по строкам</span>
+                <span class="font-medium text-rose-600">− {{ package.line_discount_amount }} KZT</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Подытог</span>
+                <span class="font-medium text-slate-900">{{ package.subtotal_after_line_discounts }} KZT</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Скидка пакета</span>
+                <span class="font-medium text-rose-600">− {{ package.package_discount_amount }} KZT</span>
+            </div>
+
+            <div class="border-t border-dashed border-slate-300 pt-3">
+                <div class="flex items-center justify-between gap-4">
+                    <span class="text-sm font-semibold text-slate-700">Итоговая цена</span>
+                    <span class="text-lg font-bold text-slate-900">{{ package.final_price }} KZT</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div class="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                Экономия клиента
+            </div>
+            <div class="mt-2 text-2xl font-bold text-emerald-900">
+                {{ package.total_discount_amount|default:"—" }} KZT
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Скидка пакета
+            </div>
+            <div class="mt-2 text-2xl font-bold text-slate-900">
+                {{ package.package_discount_percent|default:"0" }}%
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 space-y-2">
+        <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>Доля скидки от базовой суммы</span>
+            <span>{{ package.discount_share_percent|default:"0" }}%</span>
+        </div>
+
+        <div class="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+                class="h-full rounded-full bg-slate-900 transition-all duration-300"
+                style="width: {{ package.discount_share_percent|default:'0' }}%;"
+            ></div>
+        </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-2 gap-3">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <div class="text-xs text-slate-500">Активных строк</div>
+            <div class="mt-1 text-sm font-semibold text-slate-900">
+                {{ package.active_items_count|default:"—" }}
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <div class="text-xs text-slate-500">Статус цены</div>
+            <div class="mt-1 text-sm font-semibold text-slate-900">
+                {% if package.final_price %}
+                    Рассчитана
+                {% else %}
+                    Нет данных
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>

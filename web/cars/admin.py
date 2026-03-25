@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from django.contrib import admin
 from django.db.models import Count, Exists, OuterRef
-from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
+
+from catalog.models import CarServicePackage
 
 from .models import (
     BodyType,
@@ -81,6 +83,25 @@ class HasOptionsFilter(admin.SimpleListFilter):
             return queryset.filter(option_values__isnull=False).distinct()
         if value == "no":
             return queryset.filter(option_values__isnull=True)
+        return queryset
+
+
+class HasServicePackagesFilter(admin.SimpleListFilter):
+    title = _("есть пакеты услуг")
+    parameter_name = "has_service_packages"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("yes", _("Да")),
+            ("no", _("Нет")),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "yes":
+            return queryset.filter(service_packages__isnull=False).distinct()
+        if value == "no":
+            return queryset.filter(service_packages__isnull=True)
         return queryset
 
 
@@ -176,6 +197,52 @@ class ModificationInline(admin.TabularInline):
     show_change_link = True
     ordering = ("name",)
     classes = ("collapse",)
+
+
+class CarServicePackageInline(admin.TabularInline):
+    model = CarServicePackage
+    extra = 0
+    fk_name = "modification"
+    show_change_link = True
+    can_delete = False
+    classes = ("collapse",)
+
+    fields = (
+        "category",
+        "name",
+        "public_title",
+        "status",
+        "is_promo",
+        "package_discount_percent",
+        "regular_price_display",
+        "final_price_display",
+        "is_active",
+        "is_deleted",
+    )
+
+    readonly_fields = (
+        "category",
+        "name",
+        "public_title",
+        "status",
+        "is_promo",
+        "package_discount_percent",
+        "regular_price_display",
+        "final_price_display",
+        "is_active",
+        "is_deleted",
+    )
+
+    verbose_name = _("пакет услуг")
+    verbose_name_plural = _("пакеты услуг")
+
+    @admin.display(description=_("обычная цена"))
+    def regular_price_display(self, obj):
+        return obj.regular_price
+
+    @admin.display(description=_("итоговая цена"))
+    def final_price_display(self, obj):
+        return obj.final_price
 
 
 class ModificationSpecificationInline(admin.StackedInline):
@@ -436,7 +503,7 @@ class OptionCategoryAdmin(admin.ModelAdmin):
     list_per_page = 50
     readonly_fields = ("created_at", "updated_at")
     actions = (activate_categories, deactivate_categories)
-    inlines = ( )
+    inlines = ()
 
     fieldsets = (
         (None, {
@@ -573,7 +640,7 @@ class MarkAdmin(admin.ModelAdmin):
     @admin.display(ordering="_models_count", description=_("моделей"))
     def models_count(self, obj):
         return obj._models_count
-    
+
     @admin.display(boolean=True, description=_("лого"))
     def has_logo_badge(self, obj):
         return bool(getattr(obj, "_has_logo", False))
@@ -774,12 +841,14 @@ class ModificationAdmin(admin.ModelAdmin):
         "has_spec_badge",
         "has_raw_spec_badge",
         "options_count",
+        "service_packages_count",
     )
     list_filter = (
         "is_closed",
         HasSpecificationFilter,
         HasRawSpecificationFilter,
         HasOptionsFilter,
+        HasServicePackagesFilter,
         BodyTypeCodeFilter,
         "configuration__generation__model__mark",
     )
@@ -797,6 +866,9 @@ class ModificationAdmin(admin.ModelAdmin):
         "configuration__generation__model__mark__name",
         "configuration__generation__model__mark__name_ru",
         "configuration__generation__model__mark__source_id",
+        "service_packages__name",
+        "service_packages__public_title",
+        "service_packages__slug",
     )
     autocomplete_fields = ("configuration",)
     ordering = (
@@ -811,6 +883,7 @@ class ModificationAdmin(admin.ModelAdmin):
         ModificationSpecificationInline,
         ModificationRawSpecificationInline,
         ModificationOptionInline,
+        CarServicePackageInline,
     )
 
     fieldsets = (
@@ -847,6 +920,7 @@ class ModificationAdmin(admin.ModelAdmin):
         )
         qs = qs.annotate(
             _options_count=Count("option_values", distinct=True),
+            _service_packages_count=Count("service_packages", distinct=True),
             _has_spec=Exists(
                 ModificationSpecification.objects.filter(modification_id=OuterRef("pk"))
             ),
@@ -875,6 +949,10 @@ class ModificationAdmin(admin.ModelAdmin):
     @admin.display(ordering="_options_count", description=_("опций"))
     def options_count(self, obj):
         return obj._options_count
+
+    @admin.display(ordering="_service_packages_count", description=_("пакетов"))
+    def service_packages_count(self, obj):
+        return obj._service_packages_count
 
 
 @admin.register(ModificationSpecification)
@@ -913,7 +991,14 @@ class ModificationSpecificationAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("modification",)
     list_per_page = 50
-    readonly_fields = ("created_at", "updated_at", "full_title", "display_power", "display_torque", "display_range")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "full_title",
+        "display_power",
+        "display_torque",
+        "display_range",
+    )
 
     fieldsets = (
         (_("Связь"), {
@@ -1010,6 +1095,48 @@ class ModificationSpecificationAdmin(admin.ModelAdmin):
             "classes": ("collapse",),
         }),
     )
+
+    @admin.display(description=_("полный заголовок"))
+    def full_title(self, obj):
+        if not obj or not obj.modification_id:
+            return "-"
+        return obj.modification.full_title
+
+    @admin.display(description=_("мощность"))
+    def display_power(self, obj):
+        parts: list[str] = []
+        if obj.horse_power_hp is not None:
+            parts.append(f"{obj.horse_power_hp} л.с.")
+        if obj.power_kw is not None:
+            parts.append(f"{obj.power_kw} кВт")
+        if obj.power_rpm_raw:
+            parts.append(str(obj.power_rpm_raw))
+        if obj.max_power_raw:
+            parts.append(f"raw: {obj.max_power_raw}")
+        return " | ".join(parts) if parts else "-"
+
+    @admin.display(description=_("крутящий момент"))
+    def display_torque(self, obj):
+        parts: list[str] = []
+        if obj.torque_nm is not None:
+            parts.append(f"{obj.torque_nm} Н·м")
+        if obj.torque_rpm_raw:
+            parts.append(str(obj.torque_rpm_raw))
+        if obj.torque_raw:
+            parts.append(f"raw: {obj.torque_raw}")
+        return " | ".join(parts) if parts else "-"
+
+    @admin.display(description=_("запас хода"))
+    def display_range(self, obj):
+        parts: list[str] = []
+        if obj.electric_range_km is not None:
+            parts.append(f"{obj.electric_range_km} км")
+        if obj.consumption_calc_type:
+            try:
+                parts.append(obj.get_consumption_calc_type_display())
+            except Exception:
+                parts.append(str(obj.consumption_calc_type))
+        return " | ".join(parts) if parts else "-"
 
 
 @admin.register(ModificationRawSpecification)
@@ -1124,6 +1251,15 @@ class ModificationOptionAdmin(admin.ModelAdmin):
         if obj.option_definition and obj.option_definition.category:
             return obj.option_definition.category.name
         return "-"
+
+    @admin.display(description=_("значение"))
+    def display_value(self, obj):
+        parts: list[str] = []
+        if obj.value_bool is not None:
+            parts.append(str(_("Да")) if obj.value_bool else str(_("Нет")))
+        if obj.raw_value:
+            parts.append(f"raw: {obj.raw_value}")
+        return " | ".join(parts) if parts else "-"
 
 
 @admin.register(MarkLogo)

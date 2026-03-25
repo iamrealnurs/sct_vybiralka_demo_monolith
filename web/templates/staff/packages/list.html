@@ -1,0 +1,375 @@
+{% extends "staff/base.html" %}
+
+{% block title %}Пакеты услуг{% endblock %}
+
+{% block page_header %}
+<section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+        <div class="text-sm text-slate-500">Staff / Packages</div>
+        <h1 class="mt-1 text-3xl font-bold tracking-tight">Пакеты услуг</h1>
+        <p class="mt-2 text-sm text-slate-500">
+            Список пакетов для сотрудников с фильтрами, статусами, ценами и переходом в карточку пакета.
+        </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'staff:packages:package_list' %}" class="staff-btn-secondary">
+            Сбросить
+        </a>
+        <a href="{% url 'staff:packages:package_create' %}" class="staff-btn-primary">
+            Создать пакет
+        </a>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-sm text-slate-500">Всего пакетов</div>
+            <div class="mt-2 text-3xl font-bold">{{ total_count }}</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-sm text-slate-500">Опубликованные</div>
+            <div class="mt-2 text-3xl font-bold">{{ published_count }}</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-sm text-slate-500">Акционные</div>
+            <div class="mt-2 text-3xl font-bold">{{ promo_count }}</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-sm text-slate-500">Черновики</div>
+            <div class="mt-2 text-3xl font-bold">{{ draft_count }}</div>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form method="get" class="grid grid-cols-1 gap-4 lg:grid-cols-6">
+            <div class="lg:col-span-2">
+                <label class="staff-label" for="id_q">Поиск</label>
+                <input
+                    id="id_q"
+                    type="text"
+                    name="q"
+                    value="{{ filters.q }}"
+                    placeholder="Название, slug, марка, модель, модификация..."
+                    class="staff-input"
+                >
+            </div>
+
+            <div>
+                <label class="staff-label" for="id_category">Категория</label>
+                <select
+                    id="id_category"
+                    name="category"
+                    class="staff-select"
+                >
+                    <option value="">Все</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if filters.category == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="staff-label" for="id_status">Статус</label>
+                <select
+                    id="id_status"
+                    name="status"
+                    class="staff-select"
+                >
+                    <option value="">Все</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="staff-label" for="id_is_promo">Акция</label>
+                <select
+                    id="id_is_promo"
+                    name="is_promo"
+                    class="staff-select"
+                >
+                    <option value="">Все</option>
+                    <option value="1" {% if filters.is_promo == "1" %}selected{% endif %}>Только акционные</option>
+                    <option value="0" {% if filters.is_promo == "0" %}selected{% endif %}>Без акции</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="staff-label" for="id_has_items">Состав</label>
+                <select
+                    id="id_has_items"
+                    name="has_items"
+                    class="staff-select"
+                >
+                    <option value="">Все</option>
+                    <option value="1" {% if filters.has_items == "1" %}selected{% endif %}>Есть позиции</option>
+                    <option value="0" {% if filters.has_items == "0" %}selected{% endif %}>Пустые</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="staff-label" for="id_ordering">Сортировка</label>
+                <select
+                    id="id_ordering"
+                    name="ordering"
+                    class="staff-select"
+                >
+                    <option value="-updated_at" {% if filters.ordering == "-updated_at" %}selected{% endif %}>Обновлены: новые</option>
+                    <option value="updated_at" {% if filters.ordering == "updated_at" %}selected{% endif %}>Обновлены: старые</option>
+                    <option value="-created_at" {% if filters.ordering == "-created_at" %}selected{% endif %}>Созданы: новые</option>
+                    <option value="created_at" {% if filters.ordering == "created_at" %}selected{% endif %}>Созданы: старые</option>
+                    <option value="public_title" {% if filters.ordering == "public_title" %}selected{% endif %}>Название A-Z</option>
+                    <option value="-public_title" {% if filters.ordering == "-public_title" %}selected{% endif %}>Название Z-A</option>
+                    <option value="category" {% if filters.ordering == "category" %}selected{% endif %}>Категория A-Z</option>
+                    <option value="-category" {% if filters.ordering == "-category" %}selected{% endif %}>Категория Z-A</option>
+                </select>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 pt-2 lg:col-span-6">
+                <button type="submit" class="staff-btn-primary">
+                    Применить
+                </button>
+
+                <a href="{% url 'staff:packages:package_list' %}" class="staff-btn-secondary">
+                    Очистить
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="thin-scrollbar overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="border-b border-slate-200 bg-slate-50">
+                    <tr class="text-left text-slate-600">
+                        <th class="px-4 py-3 font-semibold">ID</th>
+                        <th class="px-4 py-3 font-semibold">Пакет</th>
+                        <th class="px-4 py-3 font-semibold">Категория</th>
+                        <th class="px-4 py-3 font-semibold">Автомобиль</th>
+                        <th class="px-4 py-3 font-semibold">Статус</th>
+                        <th class="px-4 py-3 font-semibold">Цены</th>
+                        <th class="px-4 py-3 font-semibold">Акция</th>
+                        <th class="px-4 py-3 font-semibold">Состав</th>
+                        <th class="px-4 py-3 font-semibold">Обновлено</th>
+                        <th class="px-4 py-3 font-semibold text-right">Действия</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-slate-200">
+                    {% for row in rows %}
+                        <tr class="align-top hover:bg-slate-50/80">
+                            <td class="px-4 py-4 text-slate-500">
+                                #{{ row.package.id }}
+                            </td>
+
+                            <td class="px-4 py-4">
+                                <div class="flex items-start gap-3">
+                                    {% if row.image_url %}
+                                        <img
+                                            src="{{ row.image_url }}"
+                                            alt="{{ row.package.public_title|default:row.package.display_title }}"
+                                            class="h-14 w-14 rounded-xl border border-slate-200 object-cover"
+                                        >
+                                    {% else %}
+                                        <div class="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
+                                            нет фото
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="min-w-0">
+                                        <div class="font-semibold text-slate-900">
+                                            {{ row.package.display_title }}
+                                        </div>
+
+                                        <div class="mt-1 text-xs text-slate-500">
+                                            {{ row.package.name }}
+                                        </div>
+
+                                        <div class="mt-1 text-xs text-slate-400">
+                                            {{ row.package.slug }}
+                                        </div>
+
+                                        {% if row.package.description_short %}
+                                            <div class="mt-2 line-clamp-2 text-xs text-slate-500">
+                                                {{ row.package.description_short }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-4 text-slate-700">
+                                {{ row.package.category.name|default:"—" }}
+                            </td>
+
+                            <td class="px-4 py-4 text-slate-700">
+                                <div class="max-w-xs">
+                                    <div class="font-medium text-slate-900">
+                                        {{ row.vehicle_label }}
+                                    </div>
+                                    <div class="mt-1 text-xs text-slate-500">
+                                        source_id: {{ row.package.modification.source_id|default:"—" }}
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-4">
+                                {% if row.package.status == "PUBLISHED" %}
+                                    <span class="staff-badge-published">
+                                        {{ row.package.get_status_display }}
+                                    </span>
+                                {% elif row.package.status == "DRAFT" %}
+                                    <span class="staff-badge-draft">
+                                        {{ row.package.get_status_display }}
+                                    </span>
+                                {% else %}
+                                    <span class="staff-badge-muted">
+                                        {{ row.package.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="px-4 py-4">
+                                <div class="space-y-1 text-xs">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Базовая сумма</span>
+                                        <span class="font-medium text-slate-900">{{ row.base_price }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Скидка по строкам</span>
+                                        <span class="font-medium text-red-600">- {{ row.line_discount_amount }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Сумма после строк</span>
+                                        <span class="font-medium text-slate-900">{{ row.regular_price }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Скидка пакета</span>
+                                        <span class="font-medium text-red-600">- {{ row.package_discount_amount }}</span>
+                                    </div>
+                                    <div class="mt-2 flex items-center justify-between gap-3 border-t border-slate-200 pt-2">
+                                        <span class="font-semibold text-slate-700">Итог</span>
+                                        <span class="text-sm font-bold text-slate-900">{{ row.final_price }}</span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-4">
+                                {% if row.package.is_promo %}
+                                    <div class="inline-flex rounded-full bg-fuchsia-100 px-2.5 py-1 text-xs font-medium text-fuchsia-700">
+                                        {{ row.package.promo_badge|default:"Акция" }}
+                                    </div>
+
+                                    {% if row.package.promo_text %}
+                                        <div class="mt-2 max-w-xs text-xs text-slate-500">
+                                            {{ row.package.promo_text }}
+                                        </div>
+                                    {% endif %}
+
+                                    {% if row.package.promo_start_at or row.package.promo_end_at %}
+                                        <div class="mt-2 text-xs text-slate-400">
+                                            {{ row.package.promo_start_at|date:"d.m.Y H:i"|default:"—" }}
+                                            —
+                                            {{ row.package.promo_end_at|date:"d.m.Y H:i"|default:"—" }}
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-slate-400">—</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="px-4 py-4">
+                                <div class="font-medium text-slate-900">{{ row.active_items_count }}</div>
+                                <div class="mt-1 text-xs text-slate-500">активных позиций</div>
+                            </td>
+
+                            <td class="px-4 py-4 text-slate-600">
+                                <div>{{ row.package.updated_at|date:"d.m.Y" }}</div>
+                                <div class="text-xs text-slate-400">{{ row.package.updated_at|date:"H:i" }}</div>
+                            </td>
+
+                            <td class="px-4 py-4 text-right">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <a
+                                        href="{% url 'staff:packages:package_detail' row.package.id %}"
+                                        class="staff-btn-secondary"
+                                    >
+                                        Открыть
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="10" class="px-4 py-12 text-center">
+                                <div class="text-lg font-semibold text-slate-800">Ничего не найдено</div>
+                                <div class="mt-2 text-sm text-slate-500">
+                                    Попробуй изменить фильтры или очистить поиск.
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+        <section class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="text-sm text-slate-500">
+                Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                {% if page_obj.has_previous %}
+                    <a
+                        href="?{% if preserved_query %}{{ preserved_query }}&{% endif %}page=1"
+                        class="staff-btn-secondary"
+                    >
+                        Первая
+                    </a>
+
+                    <a
+                        href="?{% if preserved_query %}{{ preserved_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                        class="staff-btn-secondary"
+                    >
+                        Назад
+                    </a>
+                {% endif %}
+
+                <span class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                    {{ page_obj.number }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a
+                        href="?{% if preserved_query %}{{ preserved_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+                        class="staff-btn-secondary"
+                    >
+                        Вперёд
+                    </a>
+
+                    <a
+                        href="?{% if preserved_query %}{{ preserved_query }}&{% endif %}page={{ page_obj.paginator.num_pages }}"
+                        class="staff-btn-secondary"
+                    >
+                        Последняя
+                    </a>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,769 @@
+{% extends "staff/base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+    /* Стили для интеграции Tom Select в ваш дизайн на Tailwind */
+    .ts-wrapper .ts-control {
+        border-radius: 0.75rem !important;
+        padding: 0.5rem 0.85rem !important;
+        border: 1px solid rgb(203 213 225) !important;
+        background-image: none !important; /* Убираем стандартную стрелочку, если мешает */
+    }
+    .ts-wrapper.focus .ts-control {
+        border-color: rgb(100 116 139) !important;
+        box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15) !important;
+    }
+    .ts-dropdown {
+        border-radius: 0.75rem !important;
+        margin-top: 5px !important;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+    }
+</style>
+{% endblock %}
+
+{% block page_header %}
+    {% include "staff/packages/_page_header.html" with breadcrumbs=breadcrumbs title=page_title subtitle=package.display_title %}
+{% endblock %}
+
+{% block content %}
+<div class="pb-28 space-y-6">
+    {% if form.non_field_errors %}
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            <div class="font-semibold">Ошибка формы</div>
+            <ul class="mt-2 list-disc space-y-1 pl-5">
+                {% for err in form.non_field_errors %}
+                    <li>{{ err }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">
+                Редактирование пакета #{{ package.id }}
+            </h1>
+
+            <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <span>{{ package.display_title }}</span>
+                <span>•</span>
+                <span>{{ package.slug|default:"—" }}</span>
+                <span>•</span>
+                <span>{{ edit_context.vehicle_label }}</span>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <a
+                href="{% url 'staff:packages:package_detail' package.id %}"
+                class="staff-btn-secondary"
+            >
+                Открыть карточку
+            </a>
+            <a
+                href="{% url 'staff:packages:package_list' %}"
+                class="staff-btn-secondary"
+            >
+                Назад к списку
+            </a>
+        </div>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <div class="space-y-6 xl:col-span-2">
+                <section class="staff-card p-5">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-slate-900">Основные данные</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <label class="staff-label" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% for err in form.name.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="staff-label" for="{{ form.public_title.id_for_label }}">{{ form.public_title.label }}</label>
+                            {{ form.public_title }}
+                            {% for err in form.public_title.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <label class="staff-label" for="{{ form.slug.id_for_label }}">{{ form.slug.label }}</label>
+                            {{ form.slug }}
+                            {% for err in form.slug.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <label class="staff-label" for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+                            {{ form.category }}
+                            {% for err in form.category.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <label class="staff-label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                            {{ form.status }}
+                            {% for err in form.status.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="staff-label" for="{{ form.modification.id_for_label }}">{{ form.modification.label }}</label>
+                            {{ form.modification }}
+                            {% for err in form.modification.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="staff-card p-5">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-slate-900">Описание</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="staff-label" for="{{ form.description_short.id_for_label }}">{{ form.description_short.label }}</label>
+                            {{ form.description_short }}
+                            {% for err in form.description_short.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <label class="staff-label" for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                            {{ form.description }}
+                            {% for err in form.description.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <label class="staff-label" for="{{ form.description_public.id_for_label }}">{{ form.description_public.label }}</label>
+                            {{ form.description_public }}
+                            {% for err in form.description_public.errors %}
+                                <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="staff-card p-5">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-slate-900">Акция и скидка</h2>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="inline-flex items-center gap-3">
+                            {{ form.is_promo }}
+                            <span class="text-sm font-medium text-slate-700">Пакет участвует в акции</span>
+                        </label>
+
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label class="staff-label" for="{{ form.promo_badge.id_for_label }}">{{ form.promo_badge.label }}</label>
+                                {{ form.promo_badge }}
+                                {% for err in form.promo_badge.errors %}
+                                    <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div>
+                                <label class="staff-label" for="{{ form.package_discount_percent.id_for_label }}">{{ form.package_discount_percent.label }}</label>
+                                {{ form.package_discount_percent }}
+                                {% for err in form.package_discount_percent.errors %}
+                                    <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div>
+                                <label class="staff-label" for="{{ form.promo_start_at.id_for_label }}">{{ form.promo_start_at.label }}</label>
+                                {{ form.promo_start_at }}
+                                {% for err in form.promo_start_at.errors %}
+                                    <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div>
+                                <label class="staff-label" for="{{ form.promo_end_at.id_for_label }}">{{ form.promo_end_at.label }}</label>
+                                {{ form.promo_end_at }}
+                                {% for err in form.promo_end_at.errors %}
+                                    <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="staff-label" for="{{ form.promo_text.id_for_label }}">{{ form.promo_text.label }}</label>
+                                {{ form.promo_text }}
+                                {% for err in form.promo_text.errors %}
+                                    <div class="mt-1 text-xs text-rose-600">{{ err }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="staff-card p-5">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">Категории элементов пакета</h2>
+                            <p class="mt-1 text-sm text-slate-500">
+                                Сначала создай хотя бы одну категорию, потом уже добавляй товары и услуги в состав пакета.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            id="add-item-category-row-btn"
+                            class="staff-btn-secondary"
+                        >
+                            Добавить категорию
+                        </button>
+                    </div>
+
+                    <input
+                        type="hidden"
+                        id="item-categories-total-forms"
+                        name="item_categories-TOTAL_FORMS"
+                        value="{{ package_item_categories|length }}"
+                    >
+
+                    <div class="thin-scrollbar overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-slate-200 bg-slate-50">
+                                <tr class="text-left text-slate-600">
+                                    <th class="px-3 py-2 font-semibold">Название</th>
+                                    <th class="px-3 py-2 font-semibold">Описание</th>
+                                    <th class="px-3 py-2 font-semibold">Порядок</th>
+                                    <th class="px-3 py-2 font-semibold">Активна</th>
+                                    <th class="px-3 py-2 font-semibold">Удалить</th>
+                                </tr>
+                            </thead>
+                            <tbody id="item-categories-table-body" class="divide-y divide-slate-200">
+                                {% for cat in package_item_categories %}
+                                    <tr class="align-top">
+                                        <td class="px-3 py-3">
+                                            <input type="hidden" name="item_categories-{{ forloop.counter0 }}-id" value="{{ cat.id }}">
+                                            <input
+                                                type="text"
+                                                name="item_categories-{{ forloop.counter0 }}-name"
+                                                value="{{ cat.name }}"
+                                                class="staff-input"
+                                                placeholder="Например: Основные материалы"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <textarea
+                                                name="item_categories-{{ forloop.counter0 }}-description"
+                                                rows="2"
+                                                class="staff-textarea"
+                                                placeholder="Краткое описание категории"
+                                            >{{ cat.description }}</textarea>
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                name="item_categories-{{ forloop.counter0 }}-sort_order"
+                                                value="{{ cat.sort_order }}"
+                                                class="staff-input w-24"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                name="item_categories-{{ forloop.counter0 }}-is_active"
+                                                class="h-4 w-4 rounded border-slate-300"
+                                                {% if cat.is_active %}checked{% endif %}
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                name="item_categories-{{ forloop.counter0 }}-is_deleted"
+                                                class="h-4 w-4 rounded border-slate-300"
+                                            >
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="mt-3 text-xs text-slate-500">
+                        Категории здесь принадлежат только текущему пакету. После сохранения они появятся в выпадающем списке строк состава.
+                    </p>
+                </section>
+
+                <section class="staff-card p-5">
+                    <div class="mb-4 flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">Состав пакета</h2>
+                            <p class="mt-1 text-sm text-slate-500">
+                                Редактирование строк пакета через реальные поля PackageItem.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            id="add-item-row-btn"
+                            class="staff-btn-secondary"
+                            {% if not package_item_categories %}disabled{% endif %}
+                        >
+                            Добавить строку
+                        </button>
+                    </div>
+
+                    {% if not package_item_categories %}
+                        <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            Сначала добавь и сохрани хотя бы одну категорию элементов пакета. После этого в строках состава появится выпадающий список категорий.
+                        </div>
+                    {% endif %}
+
+                    <input type="hidden" name="items-TOTAL_FORMS" id="items-total-forms" value="{{ package_items|length }}">
+
+                    <div class="thin-scrollbar overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-slate-200 bg-slate-50">
+                                <tr class="text-left text-slate-600">
+                                    <th class="px-3 py-2 font-semibold">Категория</th>
+                                    <th class="px-3 py-2 font-semibold">Номенклатура</th>
+                                    <th class="px-3 py-2 font-semibold">Кол-во</th>
+                                    <th class="px-3 py-2 font-semibold">Скидка %</th>
+                                    <th class="px-3 py-2 font-semibold">Текущая цена</th>
+                                    <th class="px-3 py-2 font-semibold">Порядок</th>
+                                    <th class="px-3 py-2 font-semibold">Активна</th>
+                                    <th class="px-3 py-2 font-semibold">Удалить</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-table-body" class="divide-y divide-slate-200">
+                                {% for item in package_items %}
+                                    <tr class="align-top">
+                                        <td class="px-3 py-3">
+                                            <input type="hidden" name="items-{{ forloop.counter0 }}-id" value="{{ item.id }}">
+                                            <select name="items-{{ forloop.counter0 }}-package_category_id" class="staff-select">
+                                                <option value="">Выбери категорию</option>
+                                                {% for cat in package_item_categories %}
+                                                    <option value="{{ cat.id }}" {% if item.package_category_id == cat.id %}selected{% endif %}>
+                                                        {{ cat.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <select name="items-{{ forloop.counter0 }}-nomenclature_item_id" class="staff-select js-nomenclature-select">
+                                                <option value="">Выбери номенклатуру</option>
+                                                {% for nom in nomenclature_items %}
+                                                    <option value="{{ nom.id }}" {% if item.nomenclature_item_id == nom.id %}selected{% endif %}>
+                                                        {{ nom.article }} — {{ nom.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="mt-1 text-xs text-slate-500">
+                                                {{ item.nomenclature_item.current_price_kzt }} KZT
+                                            </div>
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                name="items-{{ forloop.counter0 }}-quantity"
+                                                value="{{ item.quantity }}"
+                                                class="staff-input w-24"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                step="0.01"
+                                                name="items-{{ forloop.counter0 }}-discount_percent"
+                                                value="{{ item.discount_percent }}"
+                                                class="staff-input w-28"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <div class="font-medium text-slate-900">
+                                                {{ item.current_unit_price }} KZT
+                                            </div>
+                                            <div class="mt-1 text-xs text-slate-500">
+                                                итог по строке: {{ item.final_line_total }} KZT
+                                            </div>
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                name="items-{{ forloop.counter0 }}-sort_order"
+                                                value="{{ item.sort_order }}"
+                                                class="staff-input w-24"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                name="items-{{ forloop.counter0 }}-is_active"
+                                                class="h-4 w-4 rounded border-slate-300"
+                                                {% if item.is_active %}checked{% endif %}
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                name="items-{{ forloop.counter0 }}-is_deleted"
+                                                class="h-4 w-4 rounded border-slate-300"
+                                            >
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="mt-3 text-xs text-slate-500">
+                        Для услуги количество должно быть не больше 1. Повторение одной и той же номенклатуры внутри пакета запрещено.
+                    </p>
+                </section>
+            </div>
+
+            <div class="space-y-6">
+                <section class="staff-card p-5">
+                    <h2 class="text-lg font-semibold text-slate-900">Сводка пакета</h2>
+
+                    <dl class="mt-4 space-y-3 text-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">ID</dt>
+                            <dd class="font-medium text-slate-900">#{{ package.id }}</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Статус</dt>
+                            <dd class="font-medium text-slate-900">{{ package.get_status_display|default:package.status }}</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Автомобиль</dt>
+                            <dd class="text-right font-medium text-slate-900">{{ edit_context.vehicle_label }}</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Активных строк</dt>
+                            <dd class="font-medium text-slate-900">{{ edit_context.active_items_count }}</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Базовая сумма</dt>
+                            <dd class="font-medium text-slate-900">{{ edit_context.base_price }} KZT</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Скидки по строкам</dt>
+                            <dd class="font-medium text-slate-900">{{ edit_context.line_discount_amount }} KZT</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Подытог</dt>
+                            <dd class="font-medium text-slate-900">{{ edit_context.subtotal_after_line_discounts }} KZT</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Скидка пакета</dt>
+                            <dd class="font-medium text-slate-900">{{ edit_context.package_discount_amount }} KZT</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Итоговая цена</dt>
+                            <dd class="font-semibold text-slate-900">{{ edit_context.final_price }} KZT</dd>
+                        </div>
+
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Обновлён</dt>
+                            <dd class="font-medium text-slate-900">{{ package.updated_at|date:"d.m.Y H:i" }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                    <h2 class="text-lg font-semibold text-amber-900">Подсказки</h2>
+                    <ul class="mt-3 space-y-2 text-sm text-amber-800">
+                        <li>Для публикации пакет должен иметь хотя бы одну активную строку состава.</li>
+                        <li>Категория строки пакета должна принадлежать текущему пакету.</li>
+                        <li>Текущая цена строки берётся из активной цены номенклатуры.</li>
+                        <li>Snapshot-поля строк обновятся автоматически при сохранении.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+
+        <div class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
+            <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-sm text-slate-500">
+                    Ты редактируешь существующий пакет #{{ package.id }}
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <a
+                        href="{% url 'staff:packages:package_detail' package.id %}"
+                        class="staff-btn-secondary"
+                    >
+                        Отмена
+                    </a>
+
+                    <button
+                        type="submit"
+                        name="_action"
+                        value="save"
+                        class="staff-btn-secondary"
+                    >
+                        Сохранить и выйти
+                    </button>
+
+                    <button
+                        type="submit"
+                        name="_action"
+                        value="save_view"
+                        class="staff-btn-secondary"
+                    >
+                        Сохранить и открыть
+                    </button>
+
+                    <button
+                        type="submit"
+                        name="_action"
+                        value="save_continue"
+                        class="staff-btn-primary"
+                    >
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+<script>
+    /**
+     * Инициализация автокомплита для выпадающего списка номенклатуры
+     */
+    function initNomenclatureAutocomplete(element) {
+        if (!element || element.classList.contains('tomselected')) return;
+        
+        new TomSelect(element, {
+            create: false,
+            sortField: { field: "text", order: "asc" },
+            placeholder: "Поиск по названию или артикулу...",
+            allowEmptyOption: true,
+            maxOptions: 100
+        });
+    }
+
+    (function () {
+        const categoryAddBtn = document.getElementById("add-item-category-row-btn");
+        const categoryTbody = document.getElementById("item-categories-table-body");
+        const categoryTotalFormsInput = document.getElementById("item-categories-total-forms");
+
+        if (categoryAddBtn && categoryTbody && categoryTotalFormsInput) {
+            categoryAddBtn.addEventListener("click", function () {
+                const index = Number(categoryTotalFormsInput.value || "0");
+
+                const tr = document.createElement("tr");
+                tr.className = "align-top";
+                tr.innerHTML = `
+                    <td class="px-3 py-3">
+                        <input type="hidden" name="item_categories-${index}-id" value="">
+                        <input
+                            type="text"
+                            name="item_categories-${index}-name"
+                            value=""
+                            class="staff-input"
+                            placeholder="Например: Основные материалы"
+                        >
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <textarea
+                            name="item_categories-${index}-description"
+                            rows="2"
+                            class="staff-textarea"
+                            placeholder="Краткое описание категории"
+                        ></textarea>
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <input
+                            type="number"
+                            min="0"
+                            name="item_categories-${index}-sort_order"
+                            value="${index}"
+                            class="staff-input w-24"
+                        >
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <input
+                            type="checkbox"
+                            name="item_categories-${index}-is_active"
+                            class="h-4 w-4 rounded border-slate-300"
+                            checked
+                        >
+                    </td>
+
+                    <td class="px-3 py-3">
+                        <input
+                            type="checkbox"
+                            name="item_categories-${index}-is_deleted"
+                            class="h-4 w-4 rounded border-slate-300"
+                        >
+                    </td>
+                `;
+
+                categoryTbody.appendChild(tr);
+                categoryTotalFormsInput.value = String(index + 1);
+            });
+        }
+    })();
+
+    (function () {
+        const addBtn = document.getElementById("add-item-row-btn");
+        const tbody = document.getElementById("items-table-body");
+        const totalFormsInput = document.getElementById("items-total-forms");
+
+        if (!addBtn || !tbody || !totalFormsInput) return;
+        if (addBtn.hasAttribute("disabled")) return;
+
+        const categoryOptions = `
+            <option value="">Выбери категорию</option>
+            {% for cat in package_item_categories %}
+                <option value="{{ cat.id }}">{{ cat.name|escapejs }}</option>
+            {% endfor %}
+        `;
+
+        const nomenclatureOptions = `
+            <option value="">Выбери номенклатуру</option>
+            {% for nom in nomenclature_items %}
+                <option value="{{ nom.id }}">{{ nom.article|escapejs }} — {{ nom.name|escapejs }}</option>
+            {% endfor %}
+        `;
+
+        addBtn.addEventListener("click", function () {
+            const index = Number(totalFormsInput.value || "0");
+
+            const tr = document.createElement("tr");
+            tr.className = "align-top";
+            tr.innerHTML = `
+                <td class="px-3 py-3">
+                    <input type="hidden" name="items-${index}-id" value="">
+                    <select name="items-${index}-package_category_id" class="staff-select">
+                        ${categoryOptions}
+                    </select>
+                </td>
+
+                <td class="px-3 py-3">
+                    <select name="items-${index}-nomenclature_item_id" class="staff-select js-nomenclature-select">
+                        ${nomenclatureOptions}
+                    </select>
+                </td>
+
+                <td class="px-3 py-3">
+                    <input
+                        type="number"
+                        min="1"
+                        name="items-${index}-quantity"
+                        value="1"
+                        class="staff-input w-24"
+                    >
+                </td>
+
+                <td class="px-3 py-3">
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        name="items-${index}-discount_percent"
+                        value="0.00"
+                        class="staff-input w-28"
+                    >
+                </td>
+
+                <td class="px-3 py-3">
+                    <div class="text-sm text-slate-400">Определится по номенклатуре</div>
+                </td>
+
+                <td class="px-3 py-3">
+                    <input
+                        type="number"
+                        min="0"
+                        name="items-${index}-sort_order"
+                        value="${index}"
+                        class="staff-input w-24"
+                    >
+                </td>
+
+                <td class="px-3 py-3">
+                    <input
+                        type="checkbox"
+                        name="items-${index}-is_active"
+                        class="h-4 w-4 rounded border-slate-300"
+                        checked
+                    >
+                </td>
+
+                <td class="px-3 py-3">
+                    <input
+                        type="checkbox"
+                        name="items-${index}-is_deleted"
+                        class="h-4 w-4 rounded border-slate-300"
+                    >
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+            totalFormsInput.value = String(index + 1);
+
+            // Инициализируем Tom Select для только что созданной строки
+            const newSelect = tr.querySelector('.js-nomenclature-select');
+            initNomenclatureAutocomplete(newSelect);
+        });
+
+        // Первичная инициализация Tom Select для существующих строк при загрузке страницы
+        document.querySelectorAll('.js-nomenclature-select').forEach(select => {
+            initNomenclatureAutocomplete(select);
+        });
+
+    })();
+</script>
+{% endblock %}

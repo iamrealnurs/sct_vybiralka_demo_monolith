@@ -1,0 +1,252 @@
+{% extends "client/base.html" %}
+
+{% block title %}Добавить автомобиль — SCT Drive{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    
+    {# Хедер #}
+    <section>
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Регистрация автомобиля</h1>
+        <p class="mt-2 text-slate-500 font-medium">Выберите модификацию вашего авто и укажите технические данные для точного подбора сервиса.</p>
+    </section>
+
+    <form method="post" id="add-car-form" class="space-y-8">
+        {% csrf_token %}
+        
+        {# Блок выбора автомобиля (Каскадный фильтр) #}
+        <section class="glass-card rounded-[32px] p-6 md:p-8 shadow-sm border border-slate-200" id="vehicle-selector-root" 
+                 data-api-url="{{ vehicle_selector_api_url }}">
+            
+            <div class="flex items-center gap-3 mb-6">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">1. Найдите вашу модель</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="staff-label">Марка</label>
+                    <select id="vehicle-mark-select" class="staff-select">
+                        <option value="">Выберите марку</option>
+                        {% for m in marks %}
+                            <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="staff-label">Модель</label>
+                    <select id="vehicle-model-select" class="staff-select" disabled>
+                        <option value="">Сначала выберите марку</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="staff-label">Поколение</label>
+                    <select id="vehicle-generation-select" class="staff-select" disabled>
+                        <option value="">Сначала выберите модель</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="staff-label">Конфигурация (Кузов)</label>
+                    <select id="vehicle-configuration-select" class="staff-select" disabled>
+                        <option value="">Сначала поколение</option>
+                    </select>
+                </div>
+            </div>
+
+            {# Список результатов поиска #}
+            <div class="mt-8 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-black uppercase tracking-widest text-slate-400">Результаты поиска</h3>
+                    <div id="vehicle-results-count-badge" class="hidden px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-xs font-bold">0</div>
+                </div>
+                
+                <div id="vehicle-results-empty" class="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-slate-400 text-sm">
+                    Начните выбирать параметры выше, чтобы увидеть доступные модификации
+                </div>
+
+                <div id="vehicle-results-list" class="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto thin-scrollbar pr-2">
+                    {# Сюда JS отрисует карточки модификаций #}
+                </div>
+            </div>
+        </section>
+
+        {# Блок ввода данных владельца #}
+        <section class="glass-card rounded-[32px] p-6 md:p-8 shadow-sm border border-slate-200">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">2. Детали автомобиля</h2>
+            </div>
+
+            {# Скрытое поле для ID модификации, которое заполняется через JS #}
+            {{ form.modification }}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <div id="selected-vehicle-preview" class="hidden p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Выбранная модификация</p>
+                            <p id="preview-text" class="text-emerald-900 font-bold mt-1">Марка Модель Модификация</p>
+                        </div>
+                        <svg class="w-6 h-6 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </div>
+                    {% if form.modification.errors %}
+                        <div class="mt-2 text-sm text-rose-600 font-bold">{{ form.modification.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label">Госномер</label>
+                    {{ form.license_plate }}
+                    {% if form.license_plate.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.license_plate.errors }}</p>{% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label">VIN-код</label>
+                    {{ form.vin }}
+                    {% if form.vin.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.vin.errors }}</p>{% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label">Год выпуска</label>
+                    {{ form.year }}
+                    {% if form.year.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.year.errors }}</p>{% endif %}
+                </div>
+
+                <div>
+                    <label class="staff-label">Текущий пробег (км)</label>
+                    {{ form.mileage_km }}
+                    {% if form.mileage_km.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.mileage_km.errors }}</p>{% endif %}
+                </div>
+
+                <div class="md:col-span-2 flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                    {{ form.is_primary }}
+                    <label for="{{ form.is_primary.id_for_label }}" class="text-sm font-bold text-slate-700 cursor-pointer">
+                        Сделать этот автомобиль основным (активным)
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-10 flex flex-col sm:flex-row gap-3">
+                <button type="submit" class="btn-primary flex-1 py-4 text-base">
+                    Завершить регистрацию
+                </button>
+                <a href="{% url 'client:garage_list' %}" class="btn-secondary py-4 px-8">
+                    Отмена
+                </a>
+            </div>
+        </section>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const root = document.getElementById('vehicle-selector-root');
+    const apiUrl = root.dataset.apiUrl;
+    const markSelect = document.getElementById('vehicle-mark-select');
+    const modelSelect = document.getElementById('vehicle-model-select');
+    const genSelect = document.getElementById('vehicle-generation-select');
+    const cfgSelect = document.getElementById('vehicle-configuration-select');
+    const resultsList = document.getElementById('vehicle-results-list');
+    const resultsEmpty = document.getElementById('vehicle-results-empty');
+    const hiddenModInput = document.getElementById('{{ form.modification.auto_id }}');
+    const previewBox = document.getElementById('selected-vehicle-preview');
+    const previewText = document.getElementById('preview-text');
+
+    // Хранилище текущего состояния фильтров
+    let state = { mark: '', model: '', generations: [], configurations: [] };
+
+    async function loadData() {
+        const params = new URLSearchParams();
+        if (state.mark) params.append('mark', state.mark);
+        if (state.model) params.append('model', state.model);
+        state.generations.forEach(g => params.append('generations', g));
+        state.configurations.forEach(c => params.append('configurations', c));
+        params.append('format', 'json');
+
+        try {
+            const response = await fetch(`${apiUrl}?${params.toString()}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+            
+            updateSelect(modelSelect, data.options.models, state.model, 'Все модели');
+            updateSelect(genSelect, data.options.generations, state.generations[0], 'Все поколения');
+            updateSelect(cfgSelect, data.options.configurations, state.configurations[0], 'Все кузова');
+            
+            renderResults(data.results);
+        } catch (e) { console.error("Filter error", e); }
+    }
+
+    function updateSelect(select, options, selectedValue, placeholder) {
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+        if (options && options.length > 0) {
+            options.forEach(opt => {
+                const isSelected = String(opt.id) === String(selectedValue) ? 'selected' : '';
+                select.insertAdjacentHTML('beforeend', `<option value="${opt.id}" ${isSelected}>${opt.name}</option>`);
+            });
+            select.disabled = false;
+        } else {
+            select.disabled = true;
+        }
+    }
+
+    function renderResults(results) {
+        resultsList.innerHTML = '';
+        if (!results || results.length === 0) {
+            resultsEmpty.classList.remove('hidden');
+            return;
+        }
+        resultsEmpty.classList.add('hidden');
+
+        results.forEach(car => {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-indigo-400 ${String(hiddenModInput.value) === String(car.id) ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white'}`;
+            card.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-slate-900">${car.mark.name} ${car.model.name}</p>
+                        <p class="text-xs text-slate-500">${car.generation.name} · ${car.name}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase">${car.source_id}</span>
+                    </div>
+                </div>
+            `;
+            card.onclick = () => selectModification(car);
+            resultsList.appendChild(card);
+        });
+    }
+
+    function selectModification(car) {
+        hiddenModInput.value = car.id;
+        previewText.textContent = `${car.mark.name} ${car.model.name} ${car.name}`;
+        previewBox.classList.remove('hidden');
+        
+        // Визуально подсвечиваем выбор (перерендерим список)
+        loadData();
+        
+        // Скроллим к полям данных
+        previewBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Слушатели изменений
+    markSelect.onchange = (e) => { state.mark = e.target.value; state.model = ''; state.generations = []; state.configurations = []; loadData(); };
+    modelSelect.onchange = (e) => { state.model = e.target.value; state.generations = []; state.configurations = []; loadData(); };
+    genSelect.onchange = (e) => { state.generations = e.target.value ? [e.target.value] : []; state.configurations = []; loadData(); };
+    cfgSelect.onchange = (e) => { state.configurations = e.target.value ? [e.target.value] : []; loadData(); };
+
+    // Начальная загрузка
+    if (markSelect.value) loadData();
+});
+</script>
+{% endblock %}

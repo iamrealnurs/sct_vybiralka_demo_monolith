@@ -28,3 +28,32 @@ class User(AbstractUser):
     @property
     def full_name(self) -> str:
         return super().get_full_name()
+
+
+# ============================================================
+# abstract models
+# ============================================================
+
+
+class TimestampedModel(models.Model):
+    # created_at:
+    #   когда запись была создана в БД
+    # Пример:
+    #   2026-03-19 12:34:56
+    # Зачем:
+    #   для аудита, отладки, контроля импорта
+    created_at = models.DateTimeField(_("создано"), auto_now_add=True)
+
+    # updated_at:
+    #   когда запись последний раз обновлялась
+    # Пример:
+    #   2026-03-20 09:10:11
+    # Зачем:
+    #   для понимания актуальности данных
+    updated_at = models.DateTimeField(_("обновлено"), auto_now=True)
+
+    class Meta:
+        # Эта модель не создаёт свою таблицу.
+        # Она только даёт общие поля дочерним моделям.
+        abstract = True
+
